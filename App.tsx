@@ -51,13 +51,11 @@ const App = () => {
       spinAnim.setValue(0);
       scaleAnim.setValue(0.3);
 
-      // Fade in loading screen instantly
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 0,
         useNativeDriver: true,
       }).start(() => {
-        // Start spinning animation
         Animated.loop(
           Animated.timing(spinAnim, {
             toValue: 1,
@@ -67,13 +65,10 @@ const App = () => {
           })
         ).start();
 
-        // Change screen after a short delay
         setTimeout(() => {
           setCurrentScreen(screen);
 
-          // Wait for the new screen to be ready
           requestAnimationFrame(() => {
-            // Then start fade out animation
             Animated.parallel([
               Animated.timing(fadeAnim, {
                 toValue: 0,
