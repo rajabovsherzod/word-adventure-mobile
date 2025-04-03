@@ -12,6 +12,7 @@ import CreateLessonScreen from "./src/screens/CreateLessonScreen";
 import AuthScreen from "./src/screens/AuthScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import LessonGameScreen from "./src/screens/LessonGameScreen";
+import SignUpScreen from "./src/screens/SignUpScreen";
 
 type Lesson = {
   id: string;
@@ -120,11 +121,14 @@ const App = () => {
   );
 
   const handleSignUp = useCallback(() => {
-    // Handle sign up logic
-  }, []);
+    handleScreenChange("SignUp");
+  }, [handleScreenChange]);
 
   const renderScreen = () => {
     if (!isAuthenticated) {
+      if (currentScreen === "SignUp") {
+        return <SignUpScreen setScreen={handleScreenChange} />;
+      }
       return (
         <AuthScreen
           setIsAuthenticated={setIsAuthenticated}

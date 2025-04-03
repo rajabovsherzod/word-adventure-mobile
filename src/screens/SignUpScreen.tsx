@@ -11,10 +11,10 @@ import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
 
 type Props = {
-  onBack: () => void;
+  setScreen: (screen: string) => void;
 };
 
-const SignUpScreen: React.FC<Props> = ({ onBack }) => {
+const SignUpScreen: React.FC<Props> = ({ setScreen }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -38,7 +38,10 @@ const SignUpScreen: React.FC<Props> = ({ onBack }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => setScreen("Auth")}
+        >
           <FontAwesome5 name="arrow-left" size={20} color="white" />
         </TouchableOpacity>
 
@@ -80,7 +83,10 @@ const SignUpScreen: React.FC<Props> = ({ onBack }) => {
           <Text style={styles.buttonText}>Ro'yxatdan o'tish</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.loginButton} onPress={onBack}>
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={() => setScreen("Auth")}
+        >
           <Text style={styles.loginText}>Akkauntingiz bormi? Kirish</Text>
         </TouchableOpacity>
       </View>
