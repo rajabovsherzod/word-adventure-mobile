@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import {
   Image,
@@ -13,8 +13,10 @@ import {
   StatusBar,
   Platform,
   Dimensions,
+  FlatList,
 } from "react-native";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
+import { searchWords, Word } from "../data/words";
 
 const { height } = Dimensions.get("window");
 const STATUSBAR_HEIGHT =
@@ -29,12 +31,18 @@ const SEARCH_PANEL_EXTRA_HEIGHT = 50;
 type Props = {
   setIsAuthenticated: (value: boolean) => void;
   setScreen: (screen: string) => void;
+  onWordSelect: (word: Word) => void;
 };
 
-const HomeScreen: React.FC<Props> = ({ setIsAuthenticated, setScreen }) => {
+const HomeScreen: React.FC<Props> = ({
+  setIsAuthenticated,
+  setScreen,
+  onWordSelect,
+}) => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<Word[]>([]);
   const searchAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -83,13 +91,35 @@ const HomeScreen: React.FC<Props> = ({ setIsAuthenticated, setScreen }) => {
       setSearchText("");
       setIsSearchFocused(false);
       setIsSearching(false);
+      setSearchResults([]);
     });
+  };
+
+  const handleSearchChange = (text: string) => {
+    setSearchText(text);
+
+    if (text.trim()) {
+      setIsSearching(true);
+      // So'zlar bazasidan qidiruv
+      const results = searchWords(text);
+      setSearchResults(results);
+    } else {
+      setIsSearching(false);
+      setSearchResults([]);
+    }
+  };
+
+  const handleWordSelect = (word: Word) => {
+    // Tanlangan so'zni lug'at ekraniga yo'naltirish
+    onWordSelect(word);
+    handleCloseSearch();
   };
 
   const handleSubmitSearch = () => {
     if (searchText.trim()) {
       setIsSearching(true);
       console.log("Search submitted:", searchText);
+      setScreen("Dictionary");
     }
   };
 
@@ -102,6 +132,19 @@ const HomeScreen: React.FC<Props> = ({ setIsAuthenticated, setScreen }) => {
     inputRange: [0, 1],
     outputRange: [1, 0],
   });
+
+  const renderSearchResult = ({ item }: { item: Word }) => (
+    <TouchableOpacity
+      style={styles.searchResultItem}
+      onPress={() => handleWordSelect(item)}
+    >
+      <View style={styles.searchResultContent}>
+        <Text style={styles.searchResultWord}>{item.english}</Text>
+        <Text style={styles.searchResultTranslation}>{item.uzbek}</Text>
+      </View>
+      <FontAwesome5 name="chevron-right" size={16} color="#3C5BFF" />
+    </TouchableOpacity>
+  );
 
   if (!fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: "#3C5BFF" }} />;
@@ -300,6 +343,38 @@ const HomeScreen: React.FC<Props> = ({ setIsAuthenticated, setScreen }) => {
               </View>
             </TouchableOpacity>
           </View>
+
+          {/* Dictionary Section */}
+          <View style={[styles.coursesSection, { paddingTop: 0 }]}>
+            <Text style={styles.sectionTitle}>Lug'at</Text>
+            <TouchableOpacity
+              style={styles.courseCard}
+              onPress={() => setScreen("Dictionary")}
+            >
+              <Image
+                source={{
+                  uri: "https://picsum.photos/400/302",
+                }}
+                style={styles.courseCardBg}
+                resizeMode="cover"
+              />
+              <View style={[styles.courseCardOverlay, { opacity: 0.5 }]} />
+              <View style={styles.courseCardContent}>
+                <Text style={styles.courseCardTitle}>Lug'at</Text>
+                <Text style={styles.courseCardSubtitle}>
+                  Inglizcha va o'zbekcha so'zlarni qidiring
+                </Text>
+                <TouchableOpacity
+                  style={styles.courseCardButton}
+                  onPress={() => setScreen("Dictionary")}
+                >
+                  <Text style={styles.courseCardButtonText}>
+                    Lug'atni ochish
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </View>
         </Animated.ScrollView>
 
         {/* Bottom Navigation */}
@@ -328,6 +403,16 @@ const HomeScreen: React.FC<Props> = ({ setIsAuthenticated, setScreen }) => {
             </View>
             <Text style={styles.navText}>Kurslar</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setScreen("Dictionary")}
+          >
+            <View style={styles.navIconContainer}>
+              <FontAwesome5 name="book" size={22} color="#9E9E9E" />
+            </View>
+            <Text style={styles.navText}>Lug'at</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Sliding Search Panel */}
@@ -352,12 +437,7 @@ const HomeScreen: React.FC<Props> = ({ setIsAuthenticated, setScreen }) => {
                 placeholder="So'zlarni qidirish"
                 placeholderTextColor="#666"
                 value={searchText}
-                onChangeText={(text) => {
-                  setSearchText(text);
-                  if (!text.trim()) {
-                    setIsSearching(false);
-                  }
-                }}
+                onChangeText={handleSearchChange}
                 onSubmitEditing={handleSubmitSearch}
                 returnKeyType="search"
               />
@@ -368,10 +448,28 @@ const HomeScreen: React.FC<Props> = ({ setIsAuthenticated, setScreen }) => {
                 <FontAwesome5 name="times" size={20} color="#666" />
               </TouchableOpacity>
             </View>
+
+            {isSearching && searchResults.length > 0 && (
+              <FlatList
+                data={searchResults}
+                renderItem={renderSearchResult}
+                keyExtractor={(item) => item.id}
+                style={styles.searchResultsList}
+                contentContainerStyle={styles.searchResultsContent}
+              />
+            )}
+
+            {isSearching && searchResults.length === 0 && (
+              <View style={styles.noResultsContainer}>
+                <Text style={styles.noResultsText}>
+                  Hech qanday natija topilmadi
+                </Text>
+              </View>
+            )}
           </View>
         </Animated.View>
       </View>
-    </View>  
+    </View>
   );
 };
 
@@ -706,6 +804,45 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     backgroundColor: "white",
+  },
+  searchResultsList: {
+    marginTop: 10,
+    maxHeight: 300,
+  },
+  searchResultsContent: {
+    paddingBottom: 20,
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  searchResultContent: {
+    flex: 1,
+  },
+  searchResultWord: {
+    fontSize: 16,
+    fontFamily: "Lexend_400Regular",
+    color: "#333",
+    marginBottom: 4,
+  },
+  searchResultTranslation: {
+    fontSize: 14,
+    fontFamily: "Lexend_400Regular",
+    color: "#666",
+  },
+  noResultsContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  noResultsText: {
+    fontSize: 16,
+    fontFamily: "Lexend_400Regular",
+    color: "#666",
   },
 });
 

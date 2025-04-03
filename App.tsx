@@ -13,6 +13,8 @@ import AuthScreen from "./src/screens/AuthScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import LessonGameScreen from "./src/screens/LessonGameScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
+import DictionaryScreen from "./src/screens/DictionaryScreen";
+import { Word } from "./src/data/words";
 
 type Lesson = {
   id: string;
@@ -29,6 +31,7 @@ const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -124,6 +127,14 @@ const App = () => {
     handleScreenChange("SignUp");
   }, [handleScreenChange]);
 
+  const handleWordSelect = useCallback(
+    (word: Word) => {
+      setSelectedWord(word);
+      handleScreenChange("Dictionary");
+    },
+    [handleScreenChange]
+  );
+
   const renderScreen = () => {
     if (!isAuthenticated) {
       if (currentScreen === "SignUp") {
@@ -143,6 +154,7 @@ const App = () => {
           <HomeScreen
             setIsAuthenticated={setIsAuthenticated}
             setScreen={handleScreenChange}
+            onWordSelect={handleWordSelect}
           />
         );
       case "Lessons":
@@ -154,6 +166,14 @@ const App = () => {
         );
       case "CreateLesson":
         return <CreateLessonScreen setScreen={handleScreenChange} />;
+      case "Dictionary":
+        return (
+          <DictionaryScreen
+            setScreen={handleScreenChange}
+            selectedWord={selectedWord}
+            onWordSelect={handleWordSelect}
+          />
+        );
       case "Game":
         return currentLesson ? (
           <LessonGameScreen
@@ -171,6 +191,7 @@ const App = () => {
           <HomeScreen
             setIsAuthenticated={setIsAuthenticated}
             setScreen={handleScreenChange}
+            onWordSelect={handleWordSelect}
           />
         );
     }
