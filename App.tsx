@@ -14,6 +14,7 @@ import HomeScreen from "./src/screens/HomeScreen";
 import LessonGameScreen from "./src/screens/LessonGameScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
 import DictionaryScreen from "./src/screens/DictionaryScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
 import { Word } from "./src/data/words";
 
 type Lesson = {
@@ -172,6 +173,13 @@ const App = () => {
             setScreen={handleScreenChange}
             selectedWord={selectedWord}
             onWordSelect={handleWordSelect}
+          />
+        );
+      case "Profile":
+        return (
+          <ProfileScreen
+            setScreen={handleScreenChange}
+            setIsAuthenticated={setIsAuthenticated}
           />
         );
       case "Game":

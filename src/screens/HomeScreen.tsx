@@ -133,6 +133,10 @@ const HomeScreen: React.FC<Props> = ({
     outputRange: [1, 0],
   });
 
+  const handleProfilePress = () => {
+    setScreen("Profile");
+  };
+
   const renderSearchResult = ({ item }: { item: Word }) => (
     <TouchableOpacity
       style={styles.searchResultItem}
@@ -160,7 +164,10 @@ const HomeScreen: React.FC<Props> = ({
       <View style={styles.content}>
         <Animated.View style={[styles.blueContainer, { height: headerHeight }]}>
           <View style={styles.topBar}>
-            <View style={styles.profile}>
+            <TouchableOpacity
+              style={styles.profile}
+              onPress={handleProfilePress}
+            >
               <Image
                 source={require("../../assets/images/profile_img.png")}
                 style={styles.profileImage}
@@ -169,7 +176,7 @@ const HomeScreen: React.FC<Props> = ({
                 <Text style={styles.username}>Sherzod</Text>
                 <Text style={styles.userId}>ID 1111</Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
             <View style={styles.coinsContainer}>
               <View style={styles.coins}>
