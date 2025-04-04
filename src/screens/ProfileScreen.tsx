@@ -31,11 +31,6 @@ const ProfileScreen: React.FC<Props> = ({ setScreen, setIsAuthenticated }) => {
     Lexend_600SemiBold,
   });
 
-  const handleBack = () => {
-    console.log("Orqaga qaytish");
-    setScreen("Home");
-  };
-
   const handleLogout = () => {
     setIsAuthenticated(false);
   };
@@ -49,9 +44,6 @@ const ProfileScreen: React.FC<Props> = ({ setScreen, setIsAuthenticated }) => {
       <StatusBar backgroundColor="#3C5BFF" barStyle="light-content" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <FontAwesome5 name="arrow-left" size={20} color="white" />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
 
@@ -196,6 +188,45 @@ const ProfileScreen: React.FC<Props> = ({ setScreen, setIsAuthenticated }) => {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <View style={styles.bottomNavigation}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => setScreen("Home")}
+        >
+          <View style={styles.navIconContainer}>
+            <FontAwesome5 name="home" size={22} color="#9E9E9E" />
+          </View>
+          <Text style={styles.navText}>Asosiy</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => setScreen("Lessons")}
+        >
+          <View style={styles.navIconContainer}>
+            <FontAwesome5 name="book-reader" size={22} color="#9E9E9E" />
+          </View>
+          <Text style={styles.navText}>Darslarim</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navItem}>
+          <View style={styles.navIconContainer}>
+            <FontAwesome5 name="graduation-cap" size={22} color="#9E9E9E" />
+          </View>
+          <Text style={styles.navText}>Kurslar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => setScreen("Dictionary")}
+        >
+          <View style={styles.navIconContainer}>
+            <FontAwesome5 name="book" size={22} color="#9E9E9E" />
+          </View>
+          <Text style={styles.navText}>Lug'at</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -210,9 +241,9 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: "row",
     alignItems: "center",
-  },
-  backButton: {
-    marginRight: 16,
+    height: 60,
+    zIndex: 10,
+    elevation: 10,
   },
   headerTitle: {
     color: "white",
@@ -358,6 +389,48 @@ const styles = StyleSheet.create({
     fontFamily: "Lexend_600SemiBold",
     color: "#FF3B30",
     marginLeft: 8,
+  },
+  bottomNavigation: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 75,
+    backgroundColor: "white",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(60, 91, 255, 0.08)",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navIconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 30,
+  },
+  navText: {
+    fontSize: 12,
+    color: "#9E9E9E",
+    marginTop: 4,
+    fontFamily: "Lexend_400Regular",
+  },
+  activeNavText: {
+    color: "#3C5BFF",
+    fontFamily: "Lexend_400Regular",
   },
 });
 
