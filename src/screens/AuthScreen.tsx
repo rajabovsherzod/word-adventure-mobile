@@ -6,8 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { login } from "../services/api";
 
 type RootStackParamList = {
   Auth: undefined;
@@ -18,14 +21,41 @@ type RootStackParamList = {
 type Props = {
   onSignUp: () => void;
   setIsAuthenticated: (value: boolean) => void;
+  setScreen: (screen: string) => void;
 };
 
-const AuthScreen: React.FC<Props> = ({ onSignUp, setIsAuthenticated }) => {
+const AuthScreen: React.FC<Props> = ({
+  onSignUp,
+  setIsAuthenticated,
+  setScreen,
+}) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    console.log("Login:", email, password);
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Xatolik", "Barcha maydonlarni to'ldiring");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log("Login so'rovi yuborilmoqda...");
+      const { user } = await login(email, password);
+      console.log("Login muvaffaqiyatli:", user);
+      setIsAuthenticated(true);
+      setScreen("Home");
+    } catch (error: any) {
+      console.error("Login xatosi:", error);
+      console.error("Xatolik tafsilotlari:", error.response?.data);
+      Alert.alert(
+        "Xatolik",
+        error.response?.data?.message || "Tizimga kirishda xatolik yuz berdi"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -50,6 +80,7 @@ const AuthScreen: React.FC<Props> = ({ onSignUp, setIsAuthenticated }) => {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          editable={!loading}
         />
 
         <TextInput
@@ -58,13 +89,26 @@ const AuthScreen: React.FC<Props> = ({ onSignUp, setIsAuthenticated }) => {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          editable={!loading}
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Kirish</Text>
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.buttonText}>Kirish</Text>
+          )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.signupButton} onPress={onSignUp}>
+        <TouchableOpacity
+          style={styles.signupButton}
+          onPress={onSignUp}
+          disabled={loading}
+        >
           <Text style={styles.signupText}>
             Akkauntingiz yo'qmi? Ro'yxatdan o'tish
           </Text>
@@ -119,6 +163,9 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: "center",
     marginTop: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: "#A0A0A0",
   },
   buttonText: {
     color: "white",

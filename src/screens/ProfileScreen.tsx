@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   SafeAreaView,
   StatusBar,
   Switch,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import {
   useFonts,
@@ -16,24 +18,69 @@ import {
   Lexend_600SemiBold,
 } from "@expo-google-fonts/lexend";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
+import { logout, getMe } from "../services/api";
 
 type Props = {
   setScreen: (screen: string) => void;
   setIsAuthenticated: (value: boolean) => void;
+  isAdmin?: boolean;
 };
 
-const ProfileScreen: React.FC<Props> = ({ setScreen, setIsAuthenticated }) => {
+const ProfileScreen: React.FC<Props> = ({
+  setScreen,
+  setIsAuthenticated,
+  isAdmin,
+}) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState<any>(null);
 
   let [fontsLoaded] = useFonts({
     Lexend_400Regular,
     Lexend_600SemiBold,
   });
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const response = await getMe();
+      setUserData(response.user);
+    } catch (error) {
+      console.error("Error loading user data:", error);
+      Alert.alert(
+        "Xatolik",
+        "Foydalanuvchi ma'lumotlarini yuklashda xatolik yuz berdi"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error("Logout error:", error);
+      Alert.alert("Xatolik", "Tizimdan chiqishda xatolik yuz berdi");
+    }
+  };
+
+  const handleBack = () => {
+    setScreen("Home");
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#3C5BFF" />
+      </View>
+    );
+  }
 
   if (!fontsLoaded) {
     return null;
@@ -44,187 +91,124 @@ const ProfileScreen: React.FC<Props> = ({ setScreen, setIsAuthenticated }) => {
       <StatusBar backgroundColor="#3C5BFF" barStyle="light-content" />
 
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerTitle}>Shaxsiy kabinet</Text>
       </View>
 
       <ScrollView style={styles.content}>
         <View style={styles.profileSection}>
-          <View style={styles.profileImageContainer}>
-            <Image
-              source={require("../../assets/images/profile_img.png")}
-              style={styles.profileImage}
-            />
-            <TouchableOpacity style={styles.editImageButton}>
-              <FontAwesome5 name="camera" size={16} color="white" />
-            </TouchableOpacity>
+          <Image
+            source={require("../../assets/images/main_background.png")}
+            style={styles.profileImage}
+          />
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{userData?.name}</Text>
+            <Text style={styles.userEmail}>{userData?.email}</Text>
+            <Text style={styles.userId}>ID: {userData?.countId}</Text>
           </View>
-          <Text style={styles.userName}>Sherzod</Text>
-          <Text style={styles.userId}>ID: 1111</Text>
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>120</Text>
-              <Text style={styles.statLabel}>Words</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>15</Text>
-              <Text style={styles.statLabel}>Lessons</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>5</Text>
-              <Text style={styles.statLabel}>Days</Text>
-            </View>
+        </View>
+
+        <View style={styles.statsSection}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{userData?.coins || 0}</Text>
+            <Text style={styles.statLabel}>Tangalar</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{userData?.level || 1}</Text>
+            <Text style={styles.statLabel}>Daraja</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>
+              {userData?.completedLessons?.length || 0}
+            </Text>
+            <Text style={styles.statLabel}>Darslar</Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: "#3C5BFF" }]}>
-                <FontAwesome5 name="user" size={18} color="white" />
-              </View>
-              <Text style={styles.menuItemText}>Edit Profile</Text>
-            </View>
-            <FontAwesome5 name="chevron-right" size={16} color="#999" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: "#FF9500" }]}>
-                <FontAwesome5 name="lock" size={18} color="white" />
-              </View>
-              <Text style={styles.menuItemText}>Change Password</Text>
-            </View>
-            <FontAwesome5 name="chevron-right" size={16} color="#999" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: "#34C759" }]}>
-                <FontAwesome5 name="language" size={18} color="white" />
-              </View>
-              <Text style={styles.menuItemText}>Language</Text>
-            </View>
-            <View style={styles.menuItemRight}>
-              <Text style={styles.menuItemValue}>English</Text>
-              <FontAwesome5 name="chevron-right" size={16} color="#999" />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-
-          <View style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: "#FF3B30" }]}>
-                <FontAwesome5 name="bell" size={18} color="white" />
-              </View>
-              <Text style={styles.menuItemText}>Notifications</Text>
-            </View>
+          <Text style={styles.sectionTitle}>Sozlamalar</Text>
+          <View style={styles.settingItem}>
+            <FontAwesome5 name="bell" size={20} color="#3C5BFF" />
+            <Text style={styles.settingLabel}>Bildirishnomalar</Text>
             <Switch
               value={notificationsEnabled}
               onValueChange={setNotificationsEnabled}
-              trackColor={{ false: "#D1D1D6", true: "#3C5BFF" }}
-              thumbColor="white"
+              trackColor={{ false: "#767577", true: "#3C5BFF" }}
+              thumbColor={notificationsEnabled ? "#fff" : "#f4f3f4"}
             />
           </View>
-
-          <View style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: "#5856D6" }]}>
-                <FontAwesome5 name="moon" size={18} color="white" />
-              </View>
-              <Text style={styles.menuItemText}>Dark Mode</Text>
-            </View>
+          <View style={styles.settingItem}>
+            <FontAwesome5 name="moon" size={20} color="#3C5BFF" />
+            <Text style={styles.settingLabel}>Tungi rejim</Text>
             <Switch
               value={darkModeEnabled}
               onValueChange={setDarkModeEnabled}
-              trackColor={{ false: "#D1D1D6", true: "#3C5BFF" }}
-              thumbColor="white"
+              trackColor={{ false: "#767577", true: "#3C5BFF" }}
+              thumbColor={darkModeEnabled ? "#fff" : "#f4f3f4"}
             />
           </View>
+          <TouchableOpacity style={styles.settingItem}>
+            <FontAwesome5 name="language" size={20} color="#3C5BFF" />
+            <Text style={styles.settingLabel}>Til</Text>
+            <FontAwesome5 name="chevron-right" size={16} color="#9E9E9E" />
+          </TouchableOpacity>
         </View>
 
+        {isAdmin && (
+          <TouchableOpacity
+            style={styles.adminButton}
+            onPress={() => setScreen("AdminPanel")}
+          >
+            <FontAwesome5 name="user-shield" size={20} color="#fff" />
+            <Text style={styles.adminButtonText}>Admin Panel</Text>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
-
+          <Text style={styles.sectionTitle}>Yordam</Text>
           <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: "#007AFF" }]}>
-                <FontAwesome5 name="question-circle" size={18} color="white" />
-              </View>
-              <Text style={styles.menuItemText}>Help Center</Text>
-            </View>
-            <FontAwesome5 name="chevron-right" size={16} color="#999" />
+            <FontAwesome5 name="question-circle" size={20} color="#3C5BFF" />
+            <Text style={styles.menuItemText}>Qo'llanma</Text>
+            <FontAwesome5 name="chevron-right" size={16} color="#9E9E9E" />
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: "#FF9500" }]}>
-                <FontAwesome5 name="star" size={18} color="white" />
-              </View>
-              <Text style={styles.menuItemText}>Rate App</Text>
-            </View>
-            <FontAwesome5 name="chevron-right" size={16} color="#999" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: "#5856D6" }]}>
-                <FontAwesome5 name="info-circle" size={18} color="white" />
-              </View>
-              <Text style={styles.menuItemText}>About</Text>
-            </View>
-            <FontAwesome5 name="chevron-right" size={16} color="#999" />
+            <FontAwesome5 name="info-circle" size={20} color="#3C5BFF" />
+            <Text style={styles.menuItemText}>Dastur haqida</Text>
+            <FontAwesome5 name="chevron-right" size={16} color="#9E9E9E" />
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <FontAwesome5 name="sign-out-alt" size={18} color="#FF3B30" />
-          <Text style={styles.logoutText}>Logout</Text>
+          <FontAwesome5 name="sign-out-alt" size={20} color="#FF3B30" />
+          <Text style={styles.logoutText}>Chiqish</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      <View style={styles.bottomNavigation}>
+      {/* Asosiy navigatsiya */}
+      <View style={styles.mainNav}>
         <TouchableOpacity
           style={styles.navItem}
           onPress={() => setScreen("Home")}
         >
-          <View style={styles.navIconContainer}>
-            <FontAwesome5 name="home" size={22} color="#9E9E9E" />
-          </View>
-          <Text style={styles.navText}>Asosiy</Text>
+          <FontAwesome5 name="home" size={20} color="#999" />
+          <Text style={styles.navText}>Bosh sahifa</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={styles.navItem}
           onPress={() => setScreen("Lessons")}
         >
-          <View style={styles.navIconContainer}>
-            <FontAwesome5 name="book-reader" size={22} color="#9E9E9E" />
-          </View>
-          <Text style={styles.navText}>Darslarim</Text>
+          <FontAwesome5 name="book" size={20} color="#999" />
+          <Text style={styles.navText}>Darslar</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem}>
-          <View style={styles.navIconContainer}>
-            <FontAwesome5 name="graduation-cap" size={22} color="#9E9E9E" />
-          </View>
-          <Text style={styles.navText}>Kurslar</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity
           style={styles.navItem}
           onPress={() => setScreen("Dictionary")}
         >
-          <View style={styles.navIconContainer}>
-            <FontAwesome5 name="book" size={22} color="#9E9E9E" />
-          </View>
+          <FontAwesome5 name="bookmark" size={20} color="#999" />
           <Text style={styles.navText}>Lug'at</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
+          <FontAwesome5 name="user" size={20} color="#3C5BFF" />
+          <Text style={[styles.navText, styles.activeNavText]}>Profil</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -236,180 +220,197 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F5F5",
   },
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
   header: {
     backgroundColor: "#3C5BFF",
-    padding: 16,
     flexDirection: "row",
     alignItems: "center",
-    height: 60,
-    zIndex: 10,
-    elevation: 10,
+    justifyContent: "center",
+    padding: 20,
+    paddingTop: 60,
+    height: 120,
   },
   headerTitle: {
+    fontSize: 22,
+    fontWeight: "600",
     color: "white",
-    fontSize: 20,
-    fontFamily: "Lexend_600SemiBold",
+    textAlign: "center",
   },
   content: {
     flex: 1,
+    backgroundColor: "white",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    marginTop: -20,
   },
   profileSection: {
     backgroundColor: "white",
     padding: 20,
+    marginTop: 20,
+    marginBottom: 20,
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  profileImageContainer: {
-    position: "relative",
-    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   profileImage: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "#eee",
+    marginBottom: 15,
+    borderWidth: 3,
+    borderColor: "#3C5BFF",
   },
-  editImageButton: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#3C5BFF",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
+  userInfo: {
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "white",
   },
   userName: {
     fontSize: 24,
-    fontFamily: "Lexend_600SemiBold",
+    fontWeight: "600",
     color: "#333",
-    marginBottom: 4,
+    marginBottom: 5,
+  },
+  userEmail: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 5,
   },
   userId: {
-    fontSize: 16,
-    fontFamily: "Lexend_400Regular",
-    color: "#666",
-    marginBottom: 16,
+    fontSize: 14,
+    color: "#999",
   },
-  statsContainer: {
+  statsSection: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    paddingHorizontal: 20,
+    justifyContent: "space-around",
+    backgroundColor: "#F8F8F8",
+    borderRadius: 12,
+    padding: 15,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   statItem: {
     alignItems: "center",
   },
   statValue: {
-    fontSize: 20,
-    fontFamily: "Lexend_600SemiBold",
-    color: "#333",
-    marginBottom: 4,
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#3C5BFF",
+    marginBottom: 5,
   },
   statLabel: {
     fontSize: 14,
-    fontFamily: "Lexend_400Regular",
     color: "#666",
-  },
-  statDivider: {
-    width: 1,
-    height: "100%",
-    backgroundColor: "#eee",
   },
   section: {
     backgroundColor: "white",
-    marginTop: 16,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "#eee",
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 20,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sectionTitle: {
     fontSize: 18,
-    fontFamily: "Lexend_600SemiBold",
+    fontWeight: "600",
     color: "#333",
-    marginHorizontal: 16,
-    marginVertical: 12,
+    marginBottom: 15,
+  },
+  settingItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  settingLabel: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+    marginLeft: 15,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  menuItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  menuItemRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  menuIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
+    borderBottomColor: "#F0F0F0",
   },
   menuItemText: {
+    flex: 1,
     fontSize: 16,
-    fontFamily: "Lexend_400Regular",
     color: "#333",
+    marginLeft: 15,
   },
-  menuItemValue: {
+  adminButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#3C5BFF",
+    padding: 15,
+    borderRadius: 10,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  adminButtonText: {
+    color: "#fff",
     fontSize: 16,
-    fontFamily: "Lexend_400Regular",
-    color: "#999",
-    marginRight: 8,
+    fontWeight: "600",
+    marginLeft: 15,
   },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     backgroundColor: "white",
-    marginTop: 16,
-    marginBottom: 32,
-    marginHorizontal: 16,
-    padding: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 30,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#FF3B30",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   logoutText: {
     fontSize: 16,
-    fontFamily: "Lexend_600SemiBold",
     color: "#FF3B30",
-    marginLeft: 8,
+    marginLeft: 15,
   },
-  bottomNavigation: {
+  // Asosiy navigatsiya stillari
+  mainNav: {
+    flexDirection: "row",
+    backgroundColor: "white",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    height: 75,
-    backgroundColor: "white",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(60, 91, 255, 0.08)",
+    height: 60,
+    paddingBottom: 10,
+    paddingTop: 10,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 5,
   },
   navItem: {
@@ -417,20 +418,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  navIconContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    height: 30,
+  activeNavItem: {
+    borderTopWidth: 2,
+    borderTopColor: "#3C5BFF",
   },
   navText: {
     fontSize: 12,
-    color: "#9E9E9E",
+    color: "#999",
     marginTop: 4,
-    fontFamily: "Lexend_400Regular",
   },
   activeNavText: {
     color: "#3C5BFF",
-    fontFamily: "Lexend_400Regular",
+    fontWeight: "600",
   },
 });
 

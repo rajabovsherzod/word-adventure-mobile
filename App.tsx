@@ -15,7 +15,9 @@ import LessonGameScreen from "./src/screens/LessonGameScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
 import DictionaryScreen from "./src/screens/DictionaryScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
+import AdminPanelScreen from "./src/screens/AdminPanelScreen";
 import { Word } from "./src/data/words";
+import { checkAuth } from "./src/services/api";
 
 type Lesson = {
   id: string;
@@ -29,14 +31,38 @@ type Lesson = {
 
 const App = () => {
   const [currentScreen, setCurrentScreen] = useState<string>("Home");
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
+  const [isAdmin, setIsAdmin] = useState<boolean>(true);
+
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const authData = await checkAuth();
+        if (authData && authData.user) {
+          setIsAuthenticated(true);
+          setIsAdmin(authData.user.isAdmin || false);
+        } else {
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
 
   const spin = spinAnim.interpolate({
     inputRange: [0, 1],
@@ -136,15 +162,53 @@ const App = () => {
     [handleScreenChange]
   );
 
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <StatusBar
+          backgroundColor="#3C5BFF"
+          barStyle="light-content"
+          translucent={true}
+        />
+        <Animated.View
+          style={[
+            styles.loader,
+            {
+              transform: [{ scale: scaleAnim }, { rotate: spin }],
+            },
+          ]}
+        >
+          <View style={styles.spinnerOuter}>
+            <View style={styles.spinnerInner}>
+              <View style={styles.centerDot} />
+            </View>
+          </View>
+        </Animated.View>
+      </View>
+    );
+  }
+
   const renderScreen = () => {
     if (!isAuthenticated) {
       if (currentScreen === "SignUp") {
-        return <SignUpScreen setScreen={handleScreenChange} />;
+        return (
+          <SignUpScreen
+            onLogin={() => handleScreenChange("Auth")}
+            setIsAuthenticated={setIsAuthenticated}
+            setScreen={handleScreenChange}
+          />
+        );
       }
       return (
         <AuthScreen
+          onSignUp={() => handleScreenChange("SignUp")}
           setIsAuthenticated={setIsAuthenticated}
-          onSignUp={handleSignUp}
+          setScreen={handleScreenChange}
         />
       );
     }
@@ -180,6 +244,7 @@ const App = () => {
           <ProfileScreen
             setScreen={handleScreenChange}
             setIsAuthenticated={setIsAuthenticated}
+            isAdmin={isAdmin}
           />
         );
       case "Game":
@@ -192,6 +257,16 @@ const App = () => {
           <LessonsScreen
             setScreen={handleScreenChange}
             onStartGame={handleStartGame}
+          />
+        );
+      case "AdminPanel":
+        return isAdmin ? (
+          <AdminPanelScreen setScreen={handleScreenChange} />
+        ) : (
+          <HomeScreen
+            setIsAuthenticated={setIsAuthenticated}
+            setScreen={handleScreenChange}
+            onWordSelect={handleWordSelect}
           />
         );
       default:

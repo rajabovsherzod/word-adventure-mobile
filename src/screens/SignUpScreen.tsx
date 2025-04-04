@@ -6,18 +6,29 @@ import {
   StyleSheet,
   Image,
   TextInput,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
+import { register } from "../services/api";
 
 type Props = {
+  onLogin: () => void;
+  setIsAuthenticated: (value: boolean) => void;
   setScreen: (screen: string) => void;
 };
 
-const SignUpScreen: React.FC<Props> = ({ setScreen }) => {
+const SignUpScreen: React.FC<Props> = ({
+  onLogin,
+  setIsAuthenticated,
+  setScreen,
+}) => {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   let [fontsLoaded] = useFonts({
     Lexend_400Regular,
@@ -27,12 +38,34 @@ const SignUpScreen: React.FC<Props> = ({ setScreen }) => {
     return null;
   }
 
-  const handleSignUp = () => {
-    if (password !== confirmPassword) {
-      console.log("Passwords do not match");
+  const handleSignUp = async () => {
+    if (!name || !email || !password || !confirmPassword) {
+      Alert.alert("Xatolik", "Barcha maydonlarni to'ldiring");
       return;
     }
-    console.log("SignUp:", email, password);
+
+    if (password !== confirmPassword) {
+      Alert.alert("Xatolik", "Parollar mos kelmadi");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log("Ro'yxatdan o'tish so'rovi yuborilmoqda...");
+      const { user } = await register(name, email, password);
+      console.log("Ro'yxatdan o'tish muvaffaqiyatli:", user);
+      setIsAuthenticated(true);
+      setScreen("Home");
+    } catch (error: any) {
+      console.error("Ro'yxatdan o'tish xatosi:", error);
+      console.error("Xatolik tafsilotlari:", error.response?.data);
+      Alert.alert(
+        "Xatolik",
+        error.response?.data?.message || "Ro'yxatdan o'tishda xatolik yuz berdi"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,7 +73,8 @@ const SignUpScreen: React.FC<Props> = ({ setScreen }) => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => setScreen("Auth")}
+          onPress={onLogin}
+          disabled={loading}
         >
           <FontAwesome5 name="arrow-left" size={20} color="white" />
         </TouchableOpacity>
@@ -56,11 +90,20 @@ const SignUpScreen: React.FC<Props> = ({ setScreen }) => {
       <View style={styles.form}>
         <TextInput
           style={styles.input}
+          placeholder="Ismingiz"
+          value={name}
+          onChangeText={setName}
+          editable={!loading}
+        />
+
+        <TextInput
+          style={styles.input}
           placeholder="Email manzilingiz"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          editable={!loading}
         />
 
         <TextInput
@@ -69,6 +112,7 @@ const SignUpScreen: React.FC<Props> = ({ setScreen }) => {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          editable={!loading}
         />
 
         <TextInput
@@ -77,15 +121,25 @@ const SignUpScreen: React.FC<Props> = ({ setScreen }) => {
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
+          editable={!loading}
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleSignUp}>
-          <Text style={styles.buttonText}>Ro'yxatdan o'tish</Text>
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleSignUp}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.buttonText}>Ro'yxatdan o'tish</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.loginButton}
-          onPress={() => setScreen("Auth")}
+          onPress={onLogin}
+          disabled={loading}
         >
           <Text style={styles.loginText}>Akkauntingiz bormi? Kirish</Text>
         </TouchableOpacity>
@@ -140,6 +194,9 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: "center",
     marginTop: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: "#A0A0A0",
   },
   buttonText: {
     color: "white",

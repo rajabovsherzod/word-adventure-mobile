@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
 import { searchWords, Word } from "../data/words";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { height } = Dimensions.get("window");
 const STATUSBAR_HEIGHT =
@@ -43,12 +44,31 @@ const HomeScreen: React.FC<Props> = ({
   const [searchText, setSearchText] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Word[]>([]);
+  const [userId, setUserId] = useState<string>("");
+  const [countId, setCountId] = useState<number>(0);
   const searchAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
 
   let [fontsLoaded] = useFonts({
     Lexend_400Regular,
   });
+
+  useEffect(() => {
+    const getUserData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem("user");
+        if (userData) {
+          const user = JSON.parse(userData);
+          setUserId(user.id);
+          setCountId(user.countId);
+        }
+      } catch (error) {
+        console.error("Foydalanuvchi ma'lumotlarini olishda xatolik:", error);
+      }
+    };
+
+    getUserData();
+  }, []);
 
   // Interpolate values for animations
   const headerHeight = scrollY.interpolate({
@@ -174,7 +194,7 @@ const HomeScreen: React.FC<Props> = ({
               />
               <View style={styles.userInfo}>
                 <Text style={styles.username}>Sherzod</Text>
-                <Text style={styles.userId}>ID 1111</Text>
+                <Text style={styles.userId}>ID: {countId}</Text>
               </View>
             </TouchableOpacity>
 
@@ -526,8 +546,9 @@ const styles = StyleSheet.create({
     fontFamily: "Lexend_400Regular",
   },
   userId: {
-    color: "#E0E0E0",
-    fontSize: 12,
+    color: "white",
+    fontSize: 14,
+    marginLeft: 10,
     fontFamily: "Lexend_400Regular",
   },
   coinsContainer: {
