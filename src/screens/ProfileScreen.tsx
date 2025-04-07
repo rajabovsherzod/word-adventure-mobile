@@ -182,35 +182,6 @@ const ProfileScreen: React.FC<Props> = ({
           <Text style={styles.logoutText}>Chiqish</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {/* Asosiy navigatsiya */}
-      <View style={styles.mainNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => setScreen("Home")}
-        >
-          <FontAwesome5 name="home" size={20} color="#999" />
-          <Text style={styles.navText}>Bosh sahifa</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => setScreen("Lessons")}
-        >
-          <FontAwesome5 name="book" size={20} color="#999" />
-          <Text style={styles.navText}>Darslar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => setScreen("Dictionary")}
-        >
-          <FontAwesome5 name="bookmark" size={20} color="#999" />
-          <Text style={styles.navText}>Lug'at</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
-          <FontAwesome5 name="user" size={20} color="#3C5BFF" />
-          <Text style={[styles.navText, styles.activeNavText]}>Profil</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
@@ -245,6 +216,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     marginTop: -20,
+    marginBottom: 60,
   },
   profileSection: {
     backgroundColor: "white",
@@ -393,43 +365,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#FF3B30",
     marginLeft: 15,
-  },
-  // Asosiy navigatsiya stillari
-  mainNav: {
-    flexDirection: "row",
-    backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    paddingBottom: 10,
-    paddingTop: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  activeNavItem: {
-    borderTopWidth: 2,
-    borderTopColor: "#3C5BFF",
-  },
-  navText: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 4,
-  },
-  activeNavText: {
-    color: "#3C5BFF",
-    fontWeight: "600",
   },
 });
 

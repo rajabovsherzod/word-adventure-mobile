@@ -6,7 +6,11 @@ import {
   Animated,
   Easing,
   StatusBar,
+  TouchableOpacity,
+  Text,
 } from "react-native";
+import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
+import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
 import LessonsScreen from "./src/screens/LessonsScreen";
 import CreateLessonScreen from "./src/screens/CreateLessonScreen";
 import AuthScreen from "./src/screens/AuthScreen";
@@ -280,6 +284,117 @@ const App = () => {
     }
   };
 
+  const renderBottomNavigation = () => {
+    if (!isAuthenticated) return null;
+
+    return (
+      <View style={styles.bottomNavigation}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => handleScreenChange("Home")}
+        >
+          <View style={styles.navIconContainer}>
+            <FontAwesome5
+              name="home"
+              size={22}
+              color={currentScreen === "Home" ? "#3C5BFF" : "#9E9E9E"}
+            />
+            {currentScreen === "Home" && (
+              <View style={styles.activeIndicator} />
+            )}
+          </View>
+          <Text
+            style={[
+              styles.navText,
+              currentScreen === "Home" && styles.activeNavText,
+            ]}
+          >
+            Asosiy
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => handleScreenChange("Lessons")}
+        >
+          <View style={styles.navIconContainer}>
+            <FontAwesome5
+              name="book-reader"
+              size={22}
+              color={currentScreen === "Lessons" ? "#3C5BFF" : "#9E9E9E"}
+            />
+            {currentScreen === "Lessons" && (
+              <View style={styles.activeIndicator} />
+            )}
+          </View>
+          <Text
+            style={[
+              styles.navText,
+              currentScreen === "Lessons" && styles.activeNavText,
+            ]}
+          >
+            Darslarim
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navItem}>
+          <View style={styles.navIconContainer}>
+            <FontAwesome5 name="graduation-cap" size={22} color="#9E9E9E" />
+          </View>
+          <Text style={styles.navText}>Kurslar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => handleScreenChange("Dictionary")}
+        >
+          <View style={styles.navIconContainer}>
+            <FontAwesome5
+              name="book"
+              size={22}
+              color={currentScreen === "Dictionary" ? "#3C5BFF" : "#9E9E9E"}
+            />
+            {currentScreen === "Dictionary" && (
+              <View style={styles.activeIndicator} />
+            )}
+          </View>
+          <Text
+            style={[
+              styles.navText,
+              currentScreen === "Dictionary" && styles.activeNavText,
+            ]}
+          >
+            Lug'at
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => handleScreenChange("Profile")}
+        >
+          <View style={styles.navIconContainer}>
+            <FontAwesome5
+              name="user"
+              size={22}
+              color={currentScreen === "Profile" ? "#3C5BFF" : "#9E9E9E"}
+            />
+            {currentScreen === "Profile" && (
+              <View style={styles.activeIndicator} />
+            )}
+          </View>
+          <Text
+            style={[
+              styles.navText,
+              currentScreen === "Profile" && styles.activeNavText,
+            ]}
+          >
+            Profil
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar
@@ -288,6 +403,7 @@ const App = () => {
         translucent={true}
       />
       {renderScreen()}
+      {renderBottomNavigation()}
       {isLoading && (
         <Animated.View
           style={[
@@ -370,6 +486,52 @@ const styles = StyleSheet.create({
     top: -13,
     left: "50%",
     marginLeft: -10,
+  },
+  bottomNavigation: {
+    flexDirection: "row",
+    backgroundColor: "white",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height:80,
+    paddingBottom: 20,
+    paddingTop: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navIconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  navText: {
+    fontSize: 12,
+    color: "#9E9E9E",
+    marginTop: 4,
+    fontFamily: "Lexend_400Regular",
+  },
+  activeNavText: {
+    color: "#3C5BFF",
+    fontFamily: "Lexend_400Regular",
+  },
+  activeIndicator: {
+    position: "absolute",
+    bottom: -10,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#3C5BFF",
   },
 });
 
