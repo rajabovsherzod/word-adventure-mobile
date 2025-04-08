@@ -33,12 +33,14 @@ type Props = {
   setIsAuthenticated: (value: boolean) => void;
   setScreen: (screen: string) => void;
   onWordSelect: (word: Word) => void;
+  unreadNotificationsCount: number;
 };
 
 const HomeScreen: React.FC<Props> = ({
   setIsAuthenticated,
   setScreen,
   onWordSelect,
+  unreadNotificationsCount,
 }) => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -207,10 +209,20 @@ const HomeScreen: React.FC<Props> = ({
 
             <TouchableOpacity
               style={styles.notificationContainer}
-              onPress={() => setIsAuthenticated(false)}
+              onPress={() => setScreen("Notifications")}
             >
-              <FontAwesome5 name="bell" size={24} color="white" />
-              <Text style={styles.notificationText}>Bildirimlar</Text>
+              <View style={styles.notificationIconWrapper}>
+                <View style={styles.notificationIconBackground}>
+                  <FontAwesome5 name="bell" size={24} color="white" />
+                </View>
+                {unreadNotificationsCount > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.notificationBadgeText}>
+                      {unreadNotificationsCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -871,6 +883,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Lexend_400Regular",
     color: "#666",
+  },
+  notificationIconWrapper: {
+    position: "relative",
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#FF3B30",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#3C5BFF",
+  },
+  notificationBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  notificationIconBackground: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.5)",
   },
 });
 

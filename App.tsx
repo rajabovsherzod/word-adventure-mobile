@@ -20,6 +20,7 @@ import SignUpScreen from "./src/screens/SignUpScreen";
 import DictionaryScreen from "./src/screens/DictionaryScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import AdminPanelScreen from "./src/screens/AdminPanelScreen";
+import NotificationsScreen from "./src/screens/NotificationsScreen";
 import { Word } from "./src/data/words";
 import { checkAuth } from "./src/services/api";
 
@@ -33,6 +34,15 @@ type Lesson = {
   }[];
 };
 
+type Notification = {
+  id: string;
+  title: string;
+  message: string;
+  type: "login" | "signup" | "lesson";
+  timestamp: Date;
+  read: boolean;
+};
+
 const App = () => {
   const [currentScreen, setCurrentScreen] = useState<string>("Home");
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -44,6 +54,7 @@ const App = () => {
   const spinAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
   const [isAdmin, setIsAdmin] = useState<boolean>(true);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -52,6 +63,22 @@ const App = () => {
         if (authData && authData.user) {
           setIsAuthenticated(true);
           setIsAdmin(authData.user.isAdmin || false);
+
+          // Add login notification
+          const loginNotification: Notification = {
+            id: Date.now().toString(),
+            title: "Xush kelibsiz!",
+            message:
+              "Tizimga muvaffaqiyatli kirdingiz. O'rganishni davom eting!",
+            type: "login",
+            timestamp: new Date(),
+            read: false,
+          };
+
+          setNotifications((prevNotifications) => [
+            loginNotification,
+            ...prevNotifications,
+          ]);
         } else {
           setIsAuthenticated(false);
           setIsAdmin(false);
@@ -166,6 +193,14 @@ const App = () => {
     [handleScreenChange]
   );
 
+  const markNotificationAsRead = useCallback((id: string) => {
+    setNotifications((prevNotifications) =>
+      prevNotifications.map((notification) =>
+        notification.id === id ? { ...notification, read: true } : notification
+      )
+    );
+  }, []);
+
   if (isLoading) {
     return (
       <View
@@ -224,6 +259,9 @@ const App = () => {
             setIsAuthenticated={setIsAuthenticated}
             setScreen={handleScreenChange}
             onWordSelect={handleWordSelect}
+            unreadNotificationsCount={
+              notifications.filter((n) => !n.read).length
+            }
           />
         );
       case "Lessons":
@@ -271,6 +309,17 @@ const App = () => {
             setIsAuthenticated={setIsAuthenticated}
             setScreen={handleScreenChange}
             onWordSelect={handleWordSelect}
+            unreadNotificationsCount={
+              notifications.filter((n) => !n.read).length
+            }
+          />
+        );
+      case "Notifications":
+        return (
+          <NotificationsScreen
+            setScreen={handleScreenChange}
+            notifications={notifications}
+            markNotificationAsRead={markNotificationAsRead}
           />
         );
       default:
@@ -279,6 +328,9 @@ const App = () => {
             setIsAuthenticated={setIsAuthenticated}
             setScreen={handleScreenChange}
             onWordSelect={handleWordSelect}
+            unreadNotificationsCount={
+              notifications.filter((n) => !n.read).length
+            }
           />
         );
     }
@@ -496,7 +548,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height:80,
+    height: 80,
     paddingBottom: 20,
     paddingTop: 20,
     shadowColor: "#000",
