@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   navText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#9E9E9E",
     marginTop: 4,
     fontFamily: "Lexend_400Regular",
