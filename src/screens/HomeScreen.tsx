@@ -16,7 +16,7 @@ import {
   FlatList,
 } from "react-native";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
-import { searchWords, Word } from "../data/words";
+import { searchWords, Word, getWordsByCardAndLesson } from "../data/words";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { height } = Dimensions.get("window");
@@ -158,6 +158,59 @@ const HomeScreen: React.FC<Props> = ({
   const handleProfilePress = () => {
     setScreen("Profile");
   };
+
+  const lessonCards = [
+    {
+      id: 1,
+      title: "Boshlang'ich",
+      description: "Asosiy so'zlar va iboralar",
+      progress: 0,
+      level: 1,
+    },
+    {
+      id: 2,
+      title: "O'rta",
+      description: "Murakkabroq so'zlar va iboralar",
+      progress: 0,
+      level: 2,
+    },
+    {
+      id: 3,
+      title: "Yuqori",
+      description: "Professional so'zlar va iboralar",
+      progress: 0,
+      level: 3,
+    },
+  ];
+
+  const handleCardPress = (card: (typeof lessonCards)[0]) => {
+    // Card bosilganda darslar ro'yxatini ko'rsatish
+    const words = getWordsByCardAndLesson(card.id, 1); // Birinchi darsni ko'rsatish
+    console.log("Selected card:", card, "Words:", words);
+    // Bu yerda darslar ro'yxatini ko'rsatish uchun yangi ekran yoki modal ochish kerak
+  };
+
+  const renderLessonCard = (card: (typeof lessonCards)[0]) => (
+    <TouchableOpacity
+      key={card.id}
+      style={styles.lessonCard}
+      onPress={() => handleCardPress(card)}
+    >
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>{card.title}</Text>
+          <Text style={styles.cardDescription}>{card.description}</Text>
+        </View>
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBarBackground}>
+            <View
+              style={[styles.progressBar, { width: `${card.progress}%` }]}
+            />
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   const renderSearchResult = ({ item }: { item: Word }) => (
     <TouchableOpacity
@@ -720,17 +773,138 @@ const styles = StyleSheet.create({
     color: "#3C5BFF",
     fontFamily: "Lexend_400Regular",
   },
+  lessonCardsContainer: {
+    padding: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    color: "#333",
+  },
+  lessonCard: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardHeader: {
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 4,
+  },
+  cardDescription: {
+    fontSize: 14,
+    color: "#666",
+  },
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressBarBackground: {
+    height: 6,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#3C5BFF",
+    borderRadius: 3,
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: "white",
+  },
+  searchResultsList: {
+    marginTop: 10,
+    maxHeight: 300,
+  },
+  searchResultsContent: {
+    paddingBottom: 20,
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  searchResultContent: {
+    flex: 1,
+  },
+  searchResultWord: {
+    fontSize: 16,
+    fontFamily: "Lexend_400Regular",
+    color: "#333",
+    marginBottom: 4,
+  },
+  searchResultTranslation: {
+    fontSize: 14,
+    fontFamily: "Lexend_400Regular",
+    color: "#666",
+  },
+  noResultsContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  noResultsText: {
+    fontSize: 16,
+    fontFamily: "Lexend_400Regular",
+    color: "#666",
+  },
+  notificationIconWrapper: {
+    position: "relative",
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#FF3B30",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#3C5BFF",
+  },
+  notificationBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  notificationIconBackground: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.5)",
+  },
   levelCardsSection: {
     paddingRight: 0,
     paddingLeft: 20,
     backgroundColor: "white",
     marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    color: "#333",
-    fontFamily: "Lexend_400Regular",
-    marginBottom: 15,
   },
   cardsContainer: {
     paddingRight: 20,
@@ -840,80 +1014,6 @@ const styles = StyleSheet.create({
     color: "#3C5BFF",
     fontSize: 13,
     fontFamily: "Lexend_400Regular",
-  },
-  scrollView: {
-    flex: 1,
-    backgroundColor: "white",
-  },
-  searchResultsList: {
-    marginTop: 10,
-    maxHeight: 300,
-  },
-  searchResultsContent: {
-    paddingBottom: 20,
-  },
-  searchResultItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  searchResultContent: {
-    flex: 1,
-  },
-  searchResultWord: {
-    fontSize: 16,
-    fontFamily: "Lexend_400Regular",
-    color: "#333",
-    marginBottom: 4,
-  },
-  searchResultTranslation: {
-    fontSize: 14,
-    fontFamily: "Lexend_400Regular",
-    color: "#666",
-  },
-  noResultsContainer: {
-    padding: 20,
-    alignItems: "center",
-  },
-  noResultsText: {
-    fontSize: 16,
-    fontFamily: "Lexend_400Regular",
-    color: "#666",
-  },
-  notificationIconWrapper: {
-    position: "relative",
-  },
-  notificationBadge: {
-    position: "absolute",
-    top: -5,
-    right: -5,
-    backgroundColor: "#FF3B30",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#3C5BFF",
-  },
-  notificationBadgeText: {
-    color: "white",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-  notificationIconBackground: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.5)",
   },
 });
 
