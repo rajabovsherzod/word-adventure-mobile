@@ -159,58 +159,15 @@ const HomeScreen: React.FC<Props> = ({
     setScreen("Profile");
   };
 
-  const lessonCards = [
-    {
-      id: 1,
-      title: "Boshlang'ich",
-      description: "Asosiy so'zlar va iboralar",
-      progress: 0,
-      level: 1,
-    },
-    {
-      id: 2,
-      title: "O'rta",
-      description: "Murakkabroq so'zlar va iboralar",
-      progress: 0,
-      level: 2,
-    },
-    {
-      id: 3,
-      title: "Yuqori",
-      description: "Professional so'zlar va iboralar",
-      progress: 0,
-      level: 3,
-    },
-  ];
-
-  const handleCardPress = (card: (typeof lessonCards)[0]) => {
-    // Card bosilganda darslar ro'yxatini ko'rsatish
-    const words = getWordsByCardAndLesson(card.id, 1); // Birinchi darsni ko'rsatish
-    console.log("Selected card:", card, "Words:", words);
-    // Bu yerda darslar ro'yxatini ko'rsatish uchun yangi ekran yoki modal ochish kerak
+  const handleNotificationPress = () => {
+    setScreen("Notifications");
   };
 
-  const renderLessonCard = (card: (typeof lessonCards)[0]) => (
-    <TouchableOpacity
-      key={card.id}
-      style={styles.lessonCard}
-      onPress={() => handleCardPress(card)}
-    >
-      <View style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>{card.title}</Text>
-          <Text style={styles.cardDescription}>{card.description}</Text>
-        </View>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBarBackground}>
-            <View
-              style={[styles.progressBar, { width: `${card.progress}%` }]}
-            />
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+  const handleCardPress = (cardId: number) => {
+    // Save selected card ID to App component state
+    console.log("Selected card:", cardId);
+    setScreen("SuggestedLessons");
+  };
 
   const renderSearchResult = ({ item }: { item: Word }) => (
     <TouchableOpacity
@@ -262,7 +219,7 @@ const HomeScreen: React.FC<Props> = ({
 
             <TouchableOpacity
               style={styles.notificationContainer}
-              onPress={() => setScreen("Notifications")}
+              onPress={handleNotificationPress}
             >
               <View style={styles.notificationIconWrapper}>
                 <View style={styles.notificationIconBackground}>
@@ -339,14 +296,17 @@ const HomeScreen: React.FC<Props> = ({
               contentContainerStyle={styles.cardsContainer}
             >
               {/* Beginner Card */}
-              <TouchableOpacity style={styles.levelCard}>
+              <TouchableOpacity
+                style={styles.levelCard}
+                onPress={() => handleCardPress(1)}
+              >
                 <View style={[styles.levelCircle]}>
                   <Text style={styles.levelNumber}>1</Text>
                 </View>
                 <Text style={[styles.levelTitle, { fontSize: 14 }]}>
                   Beginner
                 </Text>
-                <View style={styles.progressBar}>
+                <View style={styles.levelProgressBar}>
                   <View style={[styles.progressFill, { width: "30%" }]} />
                 </View>
                 <Text style={[styles.progressText, { color: "#3C5BFF" }]}>
@@ -357,12 +317,13 @@ const HomeScreen: React.FC<Props> = ({
               {/* Intermediate Card */}
               <TouchableOpacity
                 style={[styles.levelCard, { marginHorizontal: 15 }]}
+                onPress={() => handleCardPress(2)}
               >
                 <View style={[styles.levelCircle]}>
                   <Text style={styles.levelNumber}>2</Text>
                 </View>
                 <Text style={styles.levelTitle}>Medium</Text>
-                <View style={styles.progressBar}>
+                <View style={styles.levelProgressBar}>
                   <View style={[styles.progressFill, { width: "15%" }]} />
                 </View>
                 <Text style={[styles.progressText, { color: "#3C5BFF" }]}>
@@ -371,12 +332,15 @@ const HomeScreen: React.FC<Props> = ({
               </TouchableOpacity>
 
               {/* Advanced Card */}
-              <TouchableOpacity style={[styles.levelCard]}>
+              <TouchableOpacity
+                style={[styles.levelCard]}
+                onPress={() => handleCardPress(3)}
+              >
                 <View style={[styles.levelCircle]}>
                   <Text style={styles.levelNumber}>3</Text>
                 </View>
                 <Text style={styles.levelTitle}>Advanced</Text>
-                <View style={styles.progressBar}>
+                <View style={styles.levelProgressBar}>
                   <View style={[styles.progressFill, { width: "5%" }]} />
                 </View>
                 <Text style={[styles.progressText, { color: "#3C5BFF" }]}>
@@ -821,10 +785,23 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     overflow: "hidden",
   },
-  progressBar: {
+  levelProgressBar: {
+    width: "100%",
+    height: 4,
+    backgroundColor: "rgba(60, 91, 255, 0.1)",
+    borderRadius: 2,
+    marginBottom: 8,
+    overflow: "hidden",
+  },
+  progressFill: {
     height: "100%",
     backgroundColor: "#3C5BFF",
-    borderRadius: 3,
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 12,
+    color: "#666",
+    fontFamily: "Lexend_400Regular",
   },
   scrollView: {
     flex: 1,
@@ -938,24 +915,6 @@ const styles = StyleSheet.create({
     color: "#333",
     fontFamily: "Lexend_400Regular",
     marginBottom: 10,
-  },
-  progressBar: {
-    width: "100%",
-    height: 4,
-    backgroundColor: "rgba(60, 91, 255, 0.1)",
-    borderRadius: 2,
-    marginBottom: 8,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#3C5BFF",
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 12,
-    color: "#666",
-    fontFamily: "Lexend_400Regular",
   },
   coursesSection: {
     paddingHorizontal: 20,

@@ -8,6 +8,7 @@ import {
   StatusBar,
   TouchableOpacity,
   Text,
+  ActivityIndicator,
 } from "react-native";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
@@ -21,7 +22,8 @@ import DictionaryScreen from "./src/screens/DictionaryScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import AdminPanelScreen from "./src/screens/AdminPanelScreen";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
-import { Word } from "./src/data/words";
+import SuggestedLessonsScreen from "./src/screens/SuggestedLessonsScreen";
+import { Word, getWordById } from "./src/data/words";
 import { checkAuth } from "./src/services/api";
 
 type Lesson = {
@@ -49,12 +51,21 @@ const App = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
+  const [selectedCardId, setSelectedCardId] = useState<number>(1);
+  const [selectedLessonId, setSelectedLessonId] = useState<number>(1);
   const timeoutRef = useRef<NodeJS.Timeout>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
   const [isAdmin, setIsAdmin] = useState<boolean>(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [selectedLevelCard, setSelectedLevelCard] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
+  const [coins, setCoins] = useState<number>(100);
+  const [selectedDictionaryWord, setSelectedDictionaryWord] =
+    useState<Word | null>(null);
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -185,13 +196,10 @@ const App = () => {
     handleScreenChange("SignUp");
   }, [handleScreenChange]);
 
-  const handleWordSelect = useCallback(
-    (word: Word) => {
-      setSelectedWord(word);
-      handleScreenChange("Dictionary");
-    },
-    [handleScreenChange]
-  );
+  const handleWordSelect = (word: Word) => {
+    const fullWord = getWordById(word.id);
+    setSelectedDictionaryWord(fullWord);
+  };
 
   const markNotificationAsRead = useCallback((id: string) => {
     setNotifications((prevNotifications) =>
@@ -200,6 +208,21 @@ const App = () => {
       )
     );
   }, []);
+
+  const handleStartLesson = (cardId: number, lessonId: number) => {
+    setSelectedCardId(cardId);
+    setSelectedLessonId(lessonId);
+    // Here you would navigate to the lesson detail screen
+    // setScreen("LessonDetail");
+  };
+
+  const addCoins = (amount: number) => {
+    setCoins((prevCoins) => prevCoins + amount);
+  };
+
+  const handleSelectLevelCard = (id: number, title: string) => {
+    setSelectedLevelCard({ id, title });
+  };
 
   if (isLoading) {
     return (
@@ -277,7 +300,7 @@ const App = () => {
         return (
           <DictionaryScreen
             setScreen={handleScreenChange}
-            selectedWord={selectedWord}
+            selectedWord={selectedDictionaryWord}
             onWordSelect={handleWordSelect}
           />
         );
@@ -320,6 +343,17 @@ const App = () => {
             setScreen={handleScreenChange}
             notifications={notifications}
             markNotificationAsRead={markNotificationAsRead}
+          />
+        );
+      case "SuggestedLessons":
+        return (
+          <SuggestedLessonsScreen
+            setScreen={handleScreenChange}
+            cardId={selectedCardId}
+            cardTitle="Beginner"
+            onStartLesson={handleStartLesson}
+            addCoins={addCoins}
+            coins={coins}
           />
         );
       default:
@@ -568,7 +602,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   navText: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#9E9E9E",
     marginTop: 4,
     fontFamily: "Lexend_400Regular",

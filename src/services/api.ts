@@ -1,7 +1,18 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
-const BASE_URL = "http://10.0.2.2:5000/api"; // Android emulyator uchun
+// IP manzilini qurilma turiga qarab tanlash
+let BASE_URL = "http://10.0.2.2:5000/api"; // Android emulyator uchun default
+
+if (Platform.OS === "ios") {
+  BASE_URL = "http://localhost:5000/api"; // iOS simulyatori uchun
+}
+
+// MUHIM: Bu qatorni izohga olish kerak, chunki fizik qurilma manzili override qiladi
+// BASE_URL = "http://172.20.10.5:5000/api"; // Fizik qurilma uchun
+
+console.log("API using URL:", BASE_URL);
 
 export const api = axios.create({
   baseURL: BASE_URL,

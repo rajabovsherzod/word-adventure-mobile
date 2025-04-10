@@ -101,25 +101,32 @@ const DictionaryScreen: React.FC<Props> = ({
         <View style={styles.definitionContainer}>
           <Text style={styles.definitionTitle}>Definition:</Text>
           <Text style={styles.definitionText}>
-            {selectedWord.englishDefinition}
+            {selectedWord.englishDefinition ||
+              `Definition for "${selectedWord.english}" not available.`}
           </Text>
           <Text style={styles.definitionTextUz}>
-            {selectedWord.uzbekDefinition}
+            {selectedWord.uzbekDefinition ||
+              `"${selectedWord.uzbek}" ta'rifi mavjud emas.`}
           </Text>
         </View>
 
         <View style={styles.examplesContainer}>
           <Text style={styles.examplesTitle}>Examples:</Text>
-          {selectedWord.examples.map((example, index) => (
+          {(selectedWord.examples || []).map((example, index) => (
             <View key={index} style={styles.exampleItem}>
               <Text style={styles.exampleText}>{example.english}</Text>
               <Text style={styles.exampleTextUz}>{example.uzbek}</Text>
             </View>
           ))}
+          {(!selectedWord.examples || selectedWord.examples.length === 0) && (
+            <Text style={styles.noExamplesText}>
+              No examples available for this word.
+            </Text>
+          )}
         </View>
 
         <TouchableOpacity
-          style={styles.backButton}
+          style={styles.returnButton}
           onPress={() => setSelectedWord(null)}
         >
           <Text style={styles.backButtonText}>Back to search</Text>
@@ -432,7 +439,7 @@ const styles = StyleSheet.create({
     color: "#666",
     lineHeight: 24,
   },
-  backButton: {
+  returnButton: {
     backgroundColor: "#3C5BFF",
     borderRadius: 12,
     padding: 16,
@@ -443,6 +450,13 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontFamily: "Lexend_600SemiBold",
+  },
+  noExamplesText: {
+    fontSize: 14,
+    fontFamily: "Lexend_400Regular",
+    color: "#666",
+    fontStyle: "italic",
+    paddingVertical: 8,
   },
 });
 

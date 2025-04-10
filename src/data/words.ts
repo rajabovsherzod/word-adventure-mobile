@@ -5,6 +5,9 @@ export interface Word {
   level: number;
   cardId: number;
   lessonId: number;
+  englishDefinition?: string;
+  uzbekDefinition?: string;
+  examples?: { english: string; uzbek: string }[];
 }
 
 export const words: Word[] = [
@@ -1255,11 +1258,66 @@ export const getWordsByLevel = (level: number): Word[] => {
   return words.filter((word) => word.level === level);
 };
 
-export const searchWords = (query: string): Word[] => {
-  const lowerQuery = query.toLowerCase();
-  return words.filter(
-    (word) =>
-      word.english.toLowerCase().includes(lowerQuery) ||
-      word.uzbek.toLowerCase().includes(lowerQuery)
-  );
+export const searchWords = (
+  query: string,
+  searchType: "english" | "uzbek" = "english"
+): Word[] => {
+  if (!query || query.trim() === "") {
+    return [];
+  }
+
+  const lowerCaseQuery = query.toLowerCase().trim();
+
+  return words
+    .filter((word) => {
+      if (searchType === "english") {
+        return word.english.toLowerCase().includes(lowerCaseQuery);
+      } else {
+        return word.uzbek.toLowerCase().includes(lowerCaseQuery);
+      }
+    })
+    .map((word) => ({
+      ...word,
+      englishDefinition: getWordDefinition(word, "english"),
+      uzbekDefinition: getWordDefinition(word, "uzbek"),
+      examples: getWordExamples(word),
+    }));
 };
+
+export const getWordById = (id: string): Word | null => {
+  const word = words.find((w) => w.id === id);
+  if (!word) {
+    return null;
+  }
+
+  return {
+    ...word,
+    englishDefinition: getWordDefinition(word, "english"),
+    uzbekDefinition: getWordDefinition(word, "uzbek"),
+    examples: getWordExamples(word),
+  };
+};
+
+// Helper funksiyalar
+function getWordDefinition(word: Word, language: "english" | "uzbek"): string {
+  // Bu yerda haqiqiy ma'lumotlar bo'lmasa ham, ishlaydigan fake definitionlar qaytaramiz
+  if (language === "english") {
+    return `The definition of "${word.english}" in English. This is a sample definition.`;
+  } else {
+    return `"${word.uzbek}" so'zining o'zbek tilidagi ma'nosi. Bu namuna ta'rif.`;
+  }
+}
+
+function getWordExamples(word: Word): { english: string; uzbek: string }[] {
+  // Bu yerda haqiqiy namunalar bo'lmasa ham, ishlaydigan fake namunalar qaytaramiz
+  return [
+    {
+      english: `This is an example sentence using the word "${word.english}".`,
+      uzbek: `Bu "${word.uzbek}" so'zidan foydalangan namuna jumla.`,
+    },
+    {
+      english: `Another example with "${word.english}" in context.`,
+      uzbek: `"${word.uzbek}" so'zi bilan bog'liq yana bir misol.`,
+    },
+  ];
+}
