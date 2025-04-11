@@ -49,7 +49,13 @@ type Lesson = {
 };
 
 // GameState tipini qo'shish
-type GameStages = "memorize" | "match" | "arrange" | "write";
+type GameStages =
+  | "memorize"
+  | "match"
+  | "arrange"
+  | "write"
+  | "complete"
+  | "stages";
 
 interface GameState {
   currentStage: GameStages;
@@ -136,18 +142,22 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
     const formattedDate = date.toLocaleDateString("uz-UZ", options);
     setCurrentDate(formattedDate);
 
-    // Get coins from AsyncStorage
-    const getCoins = async () => {
+    // Load initial coins
+    const fetchCoins = async () => {
       try {
         const storedCoins = await AsyncStorage.getItem("coins");
         if (storedCoins) {
-          setCoins(parseInt(storedCoins));
+          const parsedCoins = parseInt(storedCoins);
+          // Props dan kelgan addCoins funksiyasini ishlatamiz
+          if (parsedCoins !== coins) {
+            addCoins(parsedCoins - coins);
+          }
         }
       } catch (error) {
         console.error("Error fetching coins:", error);
       }
     };
-    getCoins();
+    fetchCoins();
 
     // Load user progress
     loadProgress();
@@ -468,7 +478,7 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
 
   // Noto'g'ri javob uchun
   const handleWrongAnswer = () => {
-    setGameState((prev) => {
+    setGameState((prev: GameState) => {
       const newMistakes = prev.mistakes + 1;
 
       // 3 ta xatodan ko'p qilsa, keyingi so'zga o'tkazamiz
@@ -627,11 +637,248 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
           ))}
         </ScrollView>
 
-        <TouchableOpacity style={styles.nextStepButton} onPress={onComplete}>
+        <TouchableOpacity
+          style={styles.nextStepButton}
+          onPress={() => onComplete()}
+        >
           <Text style={styles.nextStepButtonText}>
             Keyingi bosqichga o'tish
           </Text>
         </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // MatchStage komponenti - ikkinchi bosqich
+  const MatchStage = ({ words, onComplete, onBack }) => {
+    const [englishWords, setEnglishWords] = useState([]);
+    const [uzbekWords, setUzbekWords] = useState([]);
+    const [selectedEnglish, setSelectedEnglish] = useState(null);
+    const [selectedUzbek, setSelectedUzbek] = useState(null);
+    const [matchedPairs, setMatchedPairs] = useState([]);
+
+    useEffect(() => {
+      // So'zlarni shuffle qilish
+      const shuffledEnglish = [...words].sort(() => Math.random() - 0.5);
+      const shuffledUzbek = [...words].sort(() => Math.random() - 0.5);
+
+      setEnglishWords(shuffledEnglish);
+      setUzbekWords(shuffledUzbek);
+    }, [words]);
+
+    const handleEnglishSelect = (word) => {
+      setSelectedEnglish(word);
+
+      if (selectedUzbek) {
+        // Tekshirish
+        if (word.english === selectedUzbek.english) {
+          // To'g'ri juftlik
+          setMatchedPairs([...matchedPairs, word]);
+
+          // Barcha so'zlar juftlashtirildi
+          if (matchedPairs.length + 1 === words.length) {
+            // Bosqich tugadi
+            onComplete();
+          }
+        }
+
+        // Resetlash
+        setSelectedEnglish(null);
+        setSelectedUzbek(null);
+      }
+    };
+
+    const handleUzbekSelect = (word) => {
+      setSelectedUzbek(word);
+
+      if (selectedEnglish) {
+        // Tekshirish
+        if (word.english === selectedEnglish.english) {
+          // To'g'ri juftlik
+          setMatchedPairs([...matchedPairs, word]);
+
+          // Barcha so'zlar juftlashtirildi
+          if (matchedPairs.length + 1 === words.length) {
+            // Bosqich tugadi
+            onComplete();
+          }
+        }
+
+        // Resetlash
+        setSelectedEnglish(null);
+        setSelectedUzbek(null);
+      }
+    };
+
+    return (
+      <View style={styles.gameContent}>
+        <View style={styles.matchContainer}>
+          <View style={styles.matchColumnsContainer}>
+            <View style={styles.matchColumn}>
+              <Text style={styles.matchColumnTitle}>Inglizcha</Text>
+              {englishWords.map((word, index) => (
+                <TouchableOpacity
+                  key={`eng-${index}`}
+                  style={[
+                    styles.matchWord,
+                    selectedEnglish === word && styles.matchWordSelected,
+                    matchedPairs.includes(word) && styles.matchWordMatched,
+                  ]}
+                  onPress={() =>
+                    !matchedPairs.includes(word) && handleEnglishSelect(word)
+                  }
+                  disabled={matchedPairs.includes(word)}
+                >
+                  <Text style={styles.matchWordText}>{word.english}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.matchColumn}>
+              <Text style={styles.matchColumnTitle}>O'zbekcha</Text>
+              {uzbekWords.map((word, index) => (
+                <TouchableOpacity
+                  key={`uzb-${index}`}
+                  style={[
+                    styles.matchWord,
+                    selectedUzbek === word && styles.matchWordSelected,
+                    matchedPairs.includes(word) && styles.matchWordMatched,
+                  ]}
+                  onPress={() =>
+                    !matchedPairs.includes(word) && handleUzbekSelect(word)
+                  }
+                  disabled={matchedPairs.includes(word)}
+                >
+                  <Text style={styles.matchWordText}>{word.uzbek}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.nextStepButton} onPress={onBack}>
+            <Text style={styles.nextStepButtonText}>Orqaga qaytish</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  // ArrangeStage komponenti - uchinchi bosqich
+  const ArrangeStage = ({ words, onComplete, onBack }) => {
+    const [currentWordIndex, setCurrentWordIndex] = useState(0);
+    const [arrangedLetters, setArrangedLetters] = useState([]);
+    const [shuffledLetters, setShuffledLetters] = useState([]);
+
+    useEffect(() => {
+      if (words && words.length > 0) {
+        resetWord();
+      }
+    }, [words, currentWordIndex]);
+
+    const resetWord = () => {
+      const currentWord = words[currentWordIndex].english;
+      // So'zni harflarga ajratib, aralashtirish
+      const shuffled = currentWord.split("").sort(() => Math.random() - 0.5);
+
+      setShuffledLetters(shuffled);
+      setArrangedLetters([]);
+    };
+
+    const handleSelectLetter = (letter, index) => {
+      // Harfni shuffled arraydan olib tashlash
+      const newShuffled = [...shuffledLetters];
+      newShuffled.splice(index, 1);
+      setShuffledLetters(newShuffled);
+
+      // Harfni arranged arrayga qo'shish
+      setArrangedLetters([...arrangedLetters, letter]);
+
+      // So'z to'liq tuzilgani tekshirish
+      if (newShuffled.length === 0) {
+        // Tuzilgan so'z tekshirish
+        const arrangedWord = [...arrangedLetters, letter].join("");
+        if (arrangedWord === words[currentWordIndex].english) {
+          // To'g'ri tuzildi
+          if (currentWordIndex < words.length - 1) {
+            // Keyingi so'zga o'tish
+            setTimeout(() => {
+              setCurrentWordIndex(currentWordIndex + 1);
+            }, 1000);
+          } else {
+            // Barcha so'zlar tuzildi
+            onComplete();
+          }
+        } else {
+          // Noto'g'ri tuzildi, qayta boshlash
+          resetWord();
+        }
+      }
+    };
+
+    const handleResetArranged = () => {
+      resetWord();
+    };
+
+    if (!words || words.length === 0) {
+      return (
+        <View>
+          <Text>So'z topilmadi</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.gameContent}>
+        <View style={styles.arrangeContainer}>
+          <Text style={styles.practiceWord}>
+            {words[currentWordIndex].uzbek}
+          </Text>
+
+          <View style={styles.targetWordContainer}>
+            {arrangedLetters.map((letter, index) => (
+              <View key={`arranged-${index}`} style={styles.wordSlot}>
+                <Text style={styles.letterText}>{letter}</Text>
+              </View>
+            ))}
+
+            {shuffledLetters.length > 0 &&
+              Array(shuffledLetters.length)
+                .fill(null)
+                .map((_, index) => (
+                  <View key={`empty-${index}`} style={styles.wordSlot}>
+                    <Text style={styles.letterText}></Text>
+                  </View>
+                ))}
+          </View>
+
+          <View style={styles.lettersContainer}>
+            {shuffledLetters.map((letter, index) => (
+              <TouchableOpacity
+                key={`letter-${index}`}
+                style={styles.letterButton}
+                onPress={() => handleSelectLetter(letter, index)}
+              >
+                <Text style={{ color: "white", fontSize: 20 }}>{letter}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {arrangedLetters.length > 0 && (
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={handleResetArranged}
+            >
+              <Text style={{ color: "white" }}>Qayta boshlash</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.nextStepButton, { marginTop: 20 }]}
+            onPress={onBack}
+          >
+            <Text style={styles.nextStepButtonText}>Orqaga qaytish</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -858,84 +1105,227 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
       return (
         <MemorizeStage
           words={words}
-          onComplete={() =>
+          onComplete={() => {
             setGameState({
               ...gameState,
-              currentStage: "practice",
+              currentStage: "match",
               currentWordIndex: 0,
               stageProgress: {
                 ...gameState.stageProgress,
                 memorize: 100,
               },
-            })
-          }
+            });
+            // Bosqichni yakunlash va progress saqlash
+            updateLessonProgress(25);
+          }}
         />
       );
-    } else if (gameState.currentStage === "practice") {
+    } else if (gameState.currentStage === "match") {
       return (
-        <PracticeStage
+        <MatchStage
           words={words}
-          onComplete={() =>
+          onComplete={() => {
             setGameState({
               ...gameState,
-              currentStage: "test",
+              currentStage: "arrange",
               currentWordIndex: 0,
               stageProgress: {
                 ...gameState.stageProgress,
-                memorize: 100,
+                match: 100,
               },
-            })
-          }
-          onBack={() =>
+            });
+            // Bosqichni yakunlash va progress saqlash
+            updateLessonProgress(50);
+          }}
+          onBack={() => {
             setGameState({
               ...gameState,
               currentStage: "memorize",
               currentWordIndex: 0,
-              stageProgress: {
-                ...gameState.stageProgress,
-                memorize: 0,
-              },
-            })
-          }
+            });
+          }}
         />
       );
-    } else if (gameState.currentStage === "test") {
+    } else if (gameState.currentStage === "arrange") {
       return (
-        <TestStage
+        <ArrangeStage
           words={words}
-          onComplete={() => handleCorrectAnswer()}
-          onBack={() =>
+          onComplete={() => {
             setGameState({
               ...gameState,
-              currentStage: "practice",
+              currentStage: "write",
               currentWordIndex: 0,
               stageProgress: {
                 ...gameState.stageProgress,
-                memorize: 0,
+                arrange: 100,
               },
-            })
-          }
+            });
+            // Bosqichni yakunlash va progress saqlash
+            updateLessonProgress(75);
+          }}
+          onBack={() => {
+            setGameState({
+              ...gameState,
+              currentStage: "match",
+              currentWordIndex: 0,
+            });
+          }}
+        />
+      );
+    } else if (gameState.currentStage === "write") {
+      return (
+        <WriteStage
+          words={words}
+          onComplete={() => {
+            setGameState({
+              ...gameState,
+              currentStage: "complete",
+              currentWordIndex: 0,
+              stageProgress: {
+                ...gameState.stageProgress,
+                write: 100,
+              },
+            });
+            // Bosqichni yakunlash va progress saqlash
+            updateLessonProgress(100);
+            // Darsni yakunlash
+            if (selectedLesson) {
+              markLessonComplete(selectedLesson);
+            }
+          }}
+          onBack={() => {
+            setGameState({
+              ...gameState,
+              currentStage: "arrange",
+              currentWordIndex: 0,
+            });
+          }}
         />
       );
     } else {
       return (
         <ResultStage
           score={gameState.score}
-          onPlayAgain={() =>
+          onPlayAgain={() => {
             setGameState({
               ...gameState,
               currentStage: "memorize",
               currentWordIndex: 0,
-              stageProgress: {
-                ...gameState.stageProgress,
-                memorize: 0,
-              },
-            })
-          }
+              score: 0,
+              mistakes: 0,
+              completedWords: [],
+              matchedPairs: [],
+              selectedEnglishWord: null,
+              selectedUzbekWord: null,
+              arrangedLetters: [],
+            });
+          }}
           onNext={() => setSelectedStep(null)}
         />
       );
     }
+  };
+
+  // WriteStage komponenti - to'rtinchi bosqich
+  const WriteStage = ({ words, onComplete, onBack }) => {
+    const [currentWordIndex, setCurrentWordIndex] = useState(0);
+    const [inputValue, setInputValue] = useState("");
+    const [mistakes, setMistakes] = useState(0);
+
+    const handleSubmit = () => {
+      if (
+        inputValue.trim().toLowerCase() ===
+        words[currentWordIndex].english.toLowerCase()
+      ) {
+        // To'g'ri javob
+        if (currentWordIndex < words.length - 1) {
+          // Keyingi so'zga o'tish
+          setCurrentWordIndex(currentWordIndex + 1);
+          setInputValue("");
+          setMistakes(0);
+        } else {
+          // Barcha so'zlar to'g'ri yozildi
+          onComplete();
+        }
+      } else {
+        // Noto'g'ri javob
+        setMistakes(mistakes + 1);
+
+        if (mistakes >= 2) {
+          // 3 marta xato qilindi, javobni ko'rsatish
+          setInputValue(words[currentWordIndex].english);
+
+          // 2 soniya kutib, keyingi so'zga o'tish
+          setTimeout(() => {
+            if (currentWordIndex < words.length - 1) {
+              setCurrentWordIndex(currentWordIndex + 1);
+              setInputValue("");
+              setMistakes(0);
+            } else {
+              onComplete();
+            }
+          }, 2000);
+        }
+      }
+    };
+
+    if (!words || words.length === 0) {
+      return (
+        <View>
+          <Text>So'z topilmadi</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.gameContent}>
+        <View style={styles.writeContainer}>
+          <Text style={styles.practiceWord}>
+            {words[currentWordIndex].uzbek}
+          </Text>
+          <Text style={styles.transcription}>
+            {words[currentWordIndex].transcription}
+          </Text>
+
+          <View style={styles.writeInputContainer}>
+            <TextInput
+              style={styles.writeInput}
+              value={inputValue}
+              onChangeText={setInputValue}
+              placeholder="So'zni ingliz tilida yozing..."
+              placeholderTextColor="#999"
+              autoCapitalize="none"
+              onSubmitEditing={handleSubmit}
+            />
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleSubmit}
+            >
+              <FontAwesome5 name="check" size={20} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.mistakesContainer}>
+            {[0, 1, 2].map((_, index) => (
+              <View
+                key={`mistake-${index}`}
+                style={[
+                  styles.mistakeIndicator,
+                  index < mistakes && styles.mistakeActive,
+                ]}
+              />
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.nextStepButton, { marginTop: 30 }]}
+            onPress={onBack}
+          >
+            <Text style={styles.nextStepButtonText}>Orqaga qaytish</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -1525,13 +1915,17 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   wordEnglish: {
+    flex: 1,
     fontSize: 16,
+    fontWeight: "500",
     color: "#333",
     fontFamily: "Lexend_400Regular",
   },
   wordUzbek: {
-    fontSize: 14,
-    color: "#3C5BFF",
+    width: 100,
+    fontSize: 16,
+    color: "#666",
+    textAlign: "right",
     fontFamily: "Lexend_400Regular",
   },
   stepContentContainer: {
@@ -1874,14 +2268,6 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
     marginBottom: 15,
   },
-  correctOption: {
-    backgroundColor: "#D1F5D3",
-    borderColor: "#4CAF50",
-  },
-  wrongOption: {
-    backgroundColor: "#FFEBEE",
-    borderColor: "#F44336",
-  },
   quizOptionText: {
     fontSize: 18,
     color: "#333",
@@ -1922,11 +2308,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     padding: 16,
   },
-  lessonHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
+
   backToLessons: {
     flexDirection: "row",
     alignItems: "center",
@@ -2186,7 +2568,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   stageIconContainer: {
-    width: 32, 
+    width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: "#EFF3FF",
@@ -2227,20 +2609,6 @@ const styles = StyleSheet.create({
     width: 30,
     fontSize: 16,
     color: "#666",
-    fontFamily: "Lexend_400Regular",
-  },
-  wordEnglish: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-    fontFamily: "Lexend_400Regular",
-  },
-  wordUzbek: {
-    width: 100,
-    fontSize: 16,
-    color: "#666",
-    textAlign: "right",
     fontFamily: "Lexend_400Regular",
   },
 });
