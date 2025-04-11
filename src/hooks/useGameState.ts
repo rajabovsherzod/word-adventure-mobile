@@ -1,18 +1,39 @@
-import { useState } from "react";
-import { GameState, Word, GameStages, ModalContent } from "../types/lesson";
-import { generateOptions, shuffleWord } from "../utils/LessonUtils";
+import { useState, useCallback } from "react";
+import { Word } from "../types/lesson";
 
-/**
- * Custom hook to manage game state
- */
-export const useGameState = (
-  words: Word[],
-  updateProgress: (progress: number) => void,
-  setModalContent: (content: ModalContent) => void,
-  setModalVisible: (visible: boolean) => void,
-  setSelectedStep: (step: number | null) => void
-) => {
-  // O'yin holati
+// O'yin bosqichlari
+export type GameStages =
+  | "memorize"
+  | "match"
+  | "arrange"
+  | "write"
+  | "complete";
+
+// O'yin holati uchun interfeys
+export interface GameState {
+  currentStage: GameStages;
+  currentWordIndex: number;
+  score: number;
+  mistakes: number;
+  completedWords: string[];
+  matchedPairs: { english: string; uzbek: string }[];
+  selectedEnglishWord: string | null;
+  selectedUzbekWord: string | null;
+  arrangedLetters: string[];
+  shuffledLetters: string[];
+  userInput: string;
+  stageProgress: {
+    memorize: number;
+    match: number;
+    arrange: number;
+    write: number;
+  };
+  options: string[];
+  showCorrectAnswer: boolean;
+}
+
+// Hook o'yin holati
+export const useGameState = (words: Word[]) => {
   const [gameState, setGameState] = useState<GameState>({
     currentStage: "memorize",
     currentWordIndex: 0,
@@ -23,427 +44,189 @@ export const useGameState = (
     selectedEnglishWord: null,
     selectedUzbekWord: null,
     arrangedLetters: [],
+    shuffledLetters: [],
+    userInput: "",
     stageProgress: {
       memorize: 0,
       match: 0,
       arrange: 0,
       write: 0,
     },
-    shuffledLetters: [],
-    completed: false,
-    lastSelectedOption: undefined,
+    options: [],
     showCorrectAnswer: false,
   });
 
-  // Memorize bosqichi uchun variantlar
-  const [options, setOptions] = useState<string[]>([]);
+  // So'zni aralashtirish funksiyasi
+  const shuffleWord = useCallback((word: string): string[] => {
+    return word.split("").sort(() => Math.random() - 0.5);
+  }, []);
 
-  // Write bosqichi uchun javob
-  const [writeAnswer, setWriteAnswer] = useState<string>("");
+  // So'zlar variantlarini generatsiya qilish
+  const generateOptions = useCallback(
+    (correctUzbek: string, allWords: Word[]): string[] => {
+      const options = [correctUzbek];
+      const availableWords = allWords.filter((w) => w.uzbek !== correctUzbek);
 
-  // Bosqichni tanlash
-  const handleStepSelect = (stepIndex: number, lessonProgressValue: number) => {
-    // Bosqich ochiq yoki yopiqligini tekshirish
-    const previousStepUnlocked =
-      stepIndex === 1 ||
-      (stepIndex > 1 && lessonProgressValue >= (stepIndex - 1) * 25);
-
-    if (previousStepUnlocked) {
-      setSelectedStep(stepIndex);
-
-      // Bosqichga qarab kerakli ma'lumotlarni o'rnatish
-      const availableWords = words.slice(0, 10); // Har darsda 10 ta so'z
-
-      if (stepIndex === 1) {
-        // So'zlarni yodlash bosqichi uchun variantlarni tayyorlash
-        setOptions(generateOptions(availableWords[0].uzbek, availableWords));
-
-        // GameState ni qayta o'rnatish
-        setGameState({
-          currentStage: "memorize",
-          currentWordIndex: 0,
-          score: 0,
-          mistakes: 0,
-          completedWords: [],
-          matchedPairs: [],
-          selectedEnglishWord: null,
-          selectedUzbekWord: null,
-          arrangedLetters: [],
-          stageProgress: {
-            memorize: 0,
-            match: 0,
-            arrange: 0,
-            write: 0,
-          },
-          shuffledLetters: [],
-          completed: false,
-          lastSelectedOption: undefined,
-          showCorrectAnswer: false,
-        });
-      } else if (stepIndex === 2) {
-        // So'zlarni takrorlash (match) bosqichi
-        setGameState({
-          currentStage: "match",
-          currentWordIndex: 0,
-          score: 0,
-          mistakes: 0,
-          completedWords: [],
-          matchedPairs: [],
-          selectedEnglishWord: null,
-          selectedUzbekWord: null,
-          arrangedLetters: [],
-          stageProgress: {
-            memorize: lessonProgressValue >= 25 ? 100 : 0,
-            match: 0,
-            arrange: 0,
-            write: 0,
-          },
-          shuffledLetters: [],
-          completed: false,
-          lastSelectedOption: undefined,
-          showCorrectAnswer: false,
-        });
-      } else if (stepIndex === 3) {
-        // So'zlarni mustahkamlash (arrange) bosqichi
-        const shuffledLetters = shuffleWord(availableWords[0].english);
-        setGameState({
-          currentStage: "arrange",
-          currentWordIndex: 0,
-          score: 0,
-          mistakes: 0,
-          completedWords: [],
-          matchedPairs: [],
-          selectedEnglishWord: null,
-          selectedUzbekWord: null,
-          arrangedLetters: shuffledLetters,
-          stageProgress: {
-            memorize: lessonProgressValue >= 25 ? 100 : 0,
-            match: lessonProgressValue >= 50 ? 100 : 0,
-            arrange: 0,
-            write: 0,
-          },
-          shuffledLetters: shuffledLetters,
-          completed: false,
-          lastSelectedOption: undefined,
-          showCorrectAnswer: false,
-        });
-      } else if (stepIndex === 4) {
-        // So'zlarni yozish (write) bosqichi
-        setWriteAnswer(""); // Input ni tozalash
-        setGameState({
-          currentStage: "write",
-          currentWordIndex: 0,
-          score: 0,
-          mistakes: 0,
-          completedWords: [],
-          matchedPairs: [],
-          selectedEnglishWord: null,
-          selectedUzbekWord: null,
-          arrangedLetters: [],
-          stageProgress: {
-            memorize: lessonProgressValue >= 25 ? 100 : 0,
-            match: lessonProgressValue >= 50 ? 100 : 0,
-            arrange: lessonProgressValue >= 75 ? 100 : 0,
-            write: 0,
-          },
-          shuffledLetters: [],
-          completed: false,
-          lastSelectedOption: undefined,
-          showCorrectAnswer: false,
-        });
+      // 3 ta noto'g'ri variantlarni qo'shish
+      for (let i = 0; i < 3 && availableWords.length > i; i++) {
+        const randomIndex = Math.floor(Math.random() * availableWords.length);
+        options.push(availableWords[randomIndex].uzbek);
+        availableWords.splice(randomIndex, 1);
       }
 
-      return true;
-    } else {
-      return false;
-    }
-  };
+      // Variantlarni aralashtirish
+      return options.sort(() => Math.random() - 0.5);
+    },
+    []
+  );
 
-  // To'g'ri javob uchun qayta ishlash funksiyasi
-  const handleCorrectAnswer = () => {
-    const availableWords = words.slice(0, 10);
+  // O'yin bosqichini o'zgartirish
+  const setStage = useCallback(
+    (stage: GameStages) => {
+      setGameState((prev) => {
+        let newState = {
+          ...prev,
+          currentStage: stage,
+          currentWordIndex: 0,
+          mistakes: 0,
+        };
 
-    if (gameState.currentWordIndex < availableWords.length - 1) {
-      // Keyingi so'zga o'tish
-      const nextIndex = gameState.currentWordIndex + 1;
+        // Bosqich o'zgarganda kerakli ma'lumotlarni tayyorlash
+        if (stage === "memorize" && words.length > 0) {
+          newState.options = generateOptions(words[0].uzbek, words);
+        } else if (stage === "arrange" && words.length > 0) {
+          newState.arrangedLetters = shuffleWord(words[0].english);
+        } else if (stage === "write") {
+          newState.userInput = "";
+        }
 
-      // Yangi variantlarni yaratish (memorize bosqichi uchun)
-      if (gameState.currentStage === "memorize") {
-        setOptions(
-          generateOptions(availableWords[nextIndex].uzbek, availableWords)
-        );
+        return newState;
+      });
+    },
+    [words, generateOptions, shuffleWord]
+  );
+
+  // O'yin bosqichini qayta ishga tushirish
+  const resetStage = useCallback(() => {
+    setGameState((prev) => {
+      const currentStage = prev.currentStage;
+      let newState = {
+        ...prev,
+        currentWordIndex: 0,
+        mistakes: 0,
+        matchedPairs: [],
+        selectedEnglishWord: null,
+        selectedUzbekWord: null,
+        userInput: "",
+        showCorrectAnswer: false,
+      };
+
+      // Bosqichga mos ma'lumotlarni tayyorlash
+      if (currentStage === "memorize" && words.length > 0) {
+        newState.options = generateOptions(words[0].uzbek, words);
+      } else if (currentStage === "arrange" && words.length > 0) {
+        newState.arrangedLetters = shuffleWord(words[0].english);
       }
 
-      // Game state ni yangilash
-      setGameState((prev) => ({
+      return newState;
+    });
+  }, [words, generateOptions, shuffleWord]);
+
+  // To'g'ri javob uchun
+  const handleCorrectAnswer = useCallback(() => {
+    setGameState((prev) => {
+      // Yangi holat
+      let newState = {
+        ...prev,
+        score: prev.score + 1,
+        showCorrectAnswer: true,
+      };
+
+      // So'z tugadimi?
+      if (prev.currentWordIndex < words.length - 1) {
+        return newState;
+      } else {
+        // Bosqich tugadi
+        const progressUpdate = { ...prev.stageProgress };
+
+        // Bosqich progressini 100% ga o'rnatish
+        if (prev.currentStage === "memorize") {
+          progressUpdate.memorize = 100;
+        } else if (prev.currentStage === "match") {
+          progressUpdate.match = 100;
+        } else if (prev.currentStage === "arrange") {
+          progressUpdate.arrange = 100;
+        } else if (prev.currentStage === "write") {
+          progressUpdate.write = 100;
+        }
+
+        return {
+          ...newState,
+          stageProgress: progressUpdate,
+        };
+      }
+    });
+  }, [words]);
+
+  // Noto'g'ri javob uchun
+  const handleWrongAnswer = useCallback(() => {
+    setGameState((prev) => {
+      const newMistakes = prev.mistakes + 1;
+
+      // 3 ta xatodan ko'p qilsa, keyingi so'zga o'tish
+      if (newMistakes >= 3) {
+        return {
+          ...prev,
+          mistakes: 0,
+          showCorrectAnswer: true,
+        };
+      }
+
+      return {
+        ...prev,
+        mistakes: newMistakes,
+      };
+    });
+  }, []);
+
+  // Keyingi so'zga o'tish
+  const nextWord = useCallback(() => {
+    setGameState((prev) => {
+      const nextIndex = prev.currentWordIndex + 1;
+
+      // Agar so'zlar tugasa
+      if (nextIndex >= words.length) {
+        return prev;
+      }
+
+      let newState = {
         ...prev,
         currentWordIndex: nextIndex,
-        score: prev.score + 1,
-        lastSelectedOption: undefined,
-        showCorrectAnswer: false,
         mistakes: 0,
-        // Shuffle bosqichiga qarab
-        ...(prev.currentStage === "arrange" && {
-          arrangedLetters: shuffleWord(availableWords[nextIndex].english),
-        }),
-      }));
-    } else {
-      // Barcha so'zlar tugadi - bosqichni tugatish
-      const progressUpdate = { ...gameState.stageProgress };
-
-      // Bosqichga qarab progress ni yangilash
-      switch (gameState.currentStage) {
-        case "memorize":
-          progressUpdate.memorize = 100;
-          updateProgress(25);
-          break;
-        case "match":
-          progressUpdate.match = 100;
-          updateProgress(50);
-          break;
-        case "arrange":
-          progressUpdate.arrange = 100;
-          updateProgress(75);
-          break;
-        case "write":
-          progressUpdate.write = 100;
-          updateProgress(100);
-          break;
-      }
-
-      // Modal ni ko'rsatish
-      setModalContent({
-        title: `${
-          gameState.currentStage.charAt(0).toUpperCase() +
-          gameState.currentStage.slice(1)
-        } bosqichi tugadi!`,
-        message: "Keyingi bosqichga o'tishga tayyormisiz?",
-        buttonText: "Davom etish",
-        onPress: () => {
-          setModalVisible(false);
-          setSelectedStep(null);
-        },
-      });
-
-      setModalVisible(true);
-
-      setGameState((prev) => ({
-        ...prev,
-        stageProgress: progressUpdate,
-        currentStage: "stages",
-        completed: true,
-        lastSelectedOption: undefined,
         showCorrectAnswer: false,
-      }));
-    }
-  };
+        userInput: "",
+      };
 
-  // MemorizeStage uchun variant tanlash
-  const handleOptionSelect = (selectedOption: string) => {
-    // Agar variant allaqachon tanlangan bo'lsa, bo'sh return
-    if (gameState.lastSelectedOption) {
-      return;
-    }
-
-    const currentWord = words[gameState.currentWordIndex];
-
-    // Javob to'g'rimi yoki yo'qligini tekshirish
-    const isCorrect = currentWord && currentWord.uzbek === selectedOption;
-
-    // Tanlangan variantni saqlash - to'g'ri javobda darhol ko'rsatish
-    setGameState((prev) => ({
-      ...prev,
-      lastSelectedOption: selectedOption,
-      showCorrectAnswer: true,
-    }));
-
-    if (isCorrect) {
-      // To'g'ri javob darhol ko'rsatiladi
-      handleCorrectAnswer();
-    } else {
-      // Noto'g'ri javob - 3 sekunddan so'ng keyingi so'zga o'tadi
-      setTimeout(() => {
-        const availableWords = words.slice(0, 10);
-
-        if (gameState.currentWordIndex < availableWords.length - 1) {
-          // Keyingi so'zga o'tish
-          const nextIndex = gameState.currentWordIndex + 1;
-
-          // Yangi so'z uchun variantlarni yangilash
-          setOptions(
-            generateOptions(availableWords[nextIndex].uzbek, availableWords)
-          );
-
-          setGameState((prev) => ({
-            ...prev,
-            currentWordIndex: nextIndex,
-            mistakes: 0,
-            lastSelectedOption: undefined,
-            showCorrectAnswer: false,
-          }));
-        } else {
-          // Barcha so'zlar tugadi - bosqichni tugatish
-          const progressUpdate = { ...gameState.stageProgress };
-          progressUpdate.memorize = 100;
-
-          // Professional modal chiqarish
-          setModalContent({
-            title: "Yodlash bosqichi tugadi!",
-            message: "Takrorlash bosqichiga o'tishga tayyormisiz?",
-            buttonText: "Davom etish",
-            onPress: () => {
-              updateProgress(25);
-              setModalVisible(false);
-              setSelectedStep(null);
-            },
-          });
-
-          setModalVisible(true);
-
-          setGameState((prev) => ({
-            ...prev,
-            stageProgress: progressUpdate,
-            currentStage: "stages",
-            currentWordIndex: 0,
-            lastSelectedOption: undefined, // Modal ko'rsatishdan oldin tanlangan variantni tushirib qoldiramiz
-            showCorrectAnswer: false, // Ko'rsatish holatini ham tushiramiz
-          }));
-        }
-      }, 3000); // 3 sekund kechikish
-    }
-  };
-
-  // MatchStage uchun inglizcha so'z tanlash
-  const handleSelectEnglish = (english: string) => {
-    setGameState((prev) => ({
-      ...prev,
-      selectedEnglishWord: english,
-    }));
-  };
-
-  // MatchStage uchun o'zbekcha so'z tanlash
-  const handleSelectUzbek = (uzbek: string) => {
-    setGameState((prev) => ({
-      ...prev,
-      selectedUzbekWord: uzbek,
-    }));
-
-    // Agar inglizcha so'z tanlangan bo'lsa, tekshirish
-    if (gameState.selectedEnglishWord) {
-      const matchedWord = words.find(
-        (w) => w.english === gameState.selectedEnglishWord
-      );
-
-      if (matchedWord && matchedWord.uzbek === uzbek) {
-        // Match topildi
-        const newPair = { english: gameState.selectedEnglishWord, uzbek };
-        setGameState((prev) => ({
-          ...prev,
-          matchedPairs: [...prev.matchedPairs, newPair],
-          selectedEnglishWord: null,
-          selectedUzbekWord: null,
-          score: prev.score + 1,
-        }));
-
-        // Barcha so'zlar topildimi
-        if (gameState.matchedPairs.length + 1 >= words.length) {
-          // Match bosqichi tugadi
-          handleCorrectAnswer();
-        }
-      } else {
-        // Match topilmadi
-        setGameState((prev) => ({
-          ...prev,
-          selectedEnglishWord: null,
-          selectedUzbekWord: null,
-          mistakes: prev.mistakes + 1,
-        }));
+      // Bosqichga mos ma'lumotlarni tayyorlash
+      if (prev.currentStage === "memorize") {
+        newState.options = generateOptions(words[nextIndex].uzbek, words);
+      } else if (prev.currentStage === "arrange") {
+        newState.arrangedLetters = shuffleWord(words[nextIndex].english);
       }
-    }
-  };
 
-  // ArrangeStage uchun harflarni tanlash
-  const handleArrangeLetter = (letter: string, index: number) => {
-    // Joriy so'z harflari
-    const newArrangedLetters = [...gameState.arrangedLetters];
-    // Tanlangan harfni o'chirish
-    newArrangedLetters.splice(index, 1);
-
-    // Yangi state ni saqlash
-    setGameState((prev) => ({
-      ...prev,
-      arrangedLetters: newArrangedLetters,
-    }));
-
-    // Barcha harflar ishlatilganda tekshirish
-    if (newArrangedLetters.length === 0) {
-      // Bu bosqich tugadi, keyingi so'zga o'tish
-      const availableWords = words.slice(0, 10);
-
-      if (gameState.currentWordIndex < availableWords.length - 1) {
-        // Keyingi so'zga o'tish
-        const nextIndex = gameState.currentWordIndex + 1;
-        setGameState((prev) => ({
-          ...prev,
-          currentWordIndex: nextIndex,
-          score: prev.score + 1,
-          arrangedLetters: shuffleWord(availableWords[nextIndex].english),
-          mistakes: 0,
-        }));
-      } else {
-        // Barcha so'zlar bitdi, bosqich tugadi
-        setGameState((prev) => {
-          const progressUpdate = { ...prev.stageProgress };
-          progressUpdate.arrange = 100;
-
-          // Bosqich progressini saqlash
-          updateProgress(75);
-
-          return {
-            ...prev,
-            stageProgress: progressUpdate,
-            score: prev.score + 1,
-            currentWordIndex: 0,
-            arrangedLetters: [],
-            completed: true,
-          };
-        });
-      }
-    }
-  };
-
-  // O'yin bosqichlari
-  const gameStages: Record<string, any> = {
-    memorize: {
-      options,
-      handleOptionSelect,
-    },
-    match: {
-      handleSelectEnglish,
-      handleSelectUzbek,
-    },
-    arrange: {
-      handleArrangeLetter,
-    },
-    write: {
-      writeAnswer,
-      setWriteAnswer,
-    },
-  };
+      return newState;
+    });
+  }, [words, generateOptions, shuffleWord]);
 
   return {
     gameState,
     setGameState,
-    handleStepSelect,
+    setStage,
+    resetStage,
     handleCorrectAnswer,
-    handleOptionSelect,
-    handleSelectEnglish,
-    handleSelectUzbek,
-    handleArrangeLetter,
-    options,
-    setOptions,
-    writeAnswer,
-    setWriteAnswer,
-    gameStages,
+    handleWrongAnswer,
+    nextWord,
   };
 };
+
+export default useGameState;

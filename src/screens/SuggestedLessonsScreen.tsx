@@ -19,6 +19,7 @@ import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import { getWordsByCardAndLesson, Word } from "../data/words";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import MemorizeStage from "../components/MemorizeStage";
 
 const STATUSBAR_HEIGHT =
   Platform.OS === "ios" ? 44 : StatusBar.currentHeight || 0;
@@ -51,11 +52,24 @@ type Lesson = {
 // GameState tipini qo'shish
 type GameStages =
   | "memorize"
-  | "match"
+  | "practice"
   | "arrange"
   | "write"
   | "complete"
   | "stages";
+
+type StageProgressType = {
+  total: number;
+  correct: number;
+  completed: boolean;
+};
+
+type GameStageProgress = {
+  memorize: StageProgressType;
+  practice: StageProgressType;
+  arrange: StageProgressType;
+  write: StageProgressType;
+};
 
 interface GameState {
   currentStage: GameStages;
@@ -67,15 +81,36 @@ interface GameState {
   selectedEnglishWord: string | null;
   selectedUzbekWord: string | null;
   arrangedLetters: string[];
-  stageProgress: {
-    memorize: number;
-    match: number;
-    arrange: number;
-    write: number;
-  };
+  stageProgress: GameStageProgress;
   shuffledLetters: string[];
   completed: boolean;
 }
+
+const initialStageProgress: StageProgressType = {
+  total: 0,
+  correct: 0,
+  completed: false,
+};
+
+const initialGameState: GameState = {
+  currentStage: "memorize",
+  currentWordIndex: 0,
+  score: 0,
+  mistakes: 0,
+  completedWords: [],
+  matchedPairs: [],
+  selectedEnglishWord: null,
+  selectedUzbekWord: null,
+  arrangedLetters: [],
+  stageProgress: {
+    memorize: { ...initialStageProgress },
+    practice: { ...initialStageProgress },
+    arrange: { ...initialStageProgress },
+    write: { ...initialStageProgress },
+  },
+  shuffledLetters: [],
+  completed: false,
+};
 
 const SuggestedLessonsScreen: React.FC<Props> = ({
   cardId,
@@ -113,10 +148,10 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
     selectedUzbekWord: null,
     arrangedLetters: [],
     stageProgress: {
-      memorize: 0,
-      match: 0,
-      arrange: 0,
-      write: 0,
+      memorize: { ...initialStageProgress },
+      practice: { ...initialStageProgress },
+      arrange: { ...initialStageProgress },
+      write: { ...initialStageProgress },
     },
     shuffledLetters: [],
     completed: false,
@@ -237,19 +272,11 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
     setWords(lessonWords);
   };
 
-  const handleStepSelect = (stepId: number) => {
-    setSelectedStep(stepId);
-
-    // GameState ni boshlang'ich holatga keltirish
+  const handleStepSelect = (step: number) => {
+    setSelectedStep(step);
+    const availableWords = words.slice(0, 10);
     setGameState({
-      currentStage:
-        stepId === 1
-          ? "memorize"
-          : stepId === 2
-          ? "match"
-          : stepId === 3
-          ? "arrange"
-          : "write",
+      currentStage: "memorize",
       currentWordIndex: 0,
       score: 0,
       mistakes: 0,
@@ -257,20 +284,19 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
       matchedPairs: [],
       selectedEnglishWord: null,
       selectedUzbekWord: null,
-      arrangedLetters: stepId === 3 ? shuffleWord(words[0]?.english || "") : [],
-      stageProgress: {
-        memorize: lessonProgress[selectedLesson || 1] >= 25 ? 100 : 0,
-        match: lessonProgress[selectedLesson || 1] >= 50 ? 100 : 0,
-        arrange: lessonProgress[selectedLesson || 1] >= 75 ? 100 : 0,
-        write: lessonProgress[selectedLesson || 1] >= 100 ? 100 : 0,
-      },
+      arrangedLetters: [],
       shuffledLetters: [],
       completed: false,
+      stageProgress: {
+        memorize: { ...initialStageProgress },
+        practice: { ...initialStageProgress },
+        arrange: { ...initialStageProgress },
+        write: { ...initialStageProgress },
+      },
     });
-
-    // So'z variantlarini generatsiya qilish
-    if (stepId === 1 && words.length > 0) {
-      setOptions(generateOptions(words[0].uzbek, words));
+    // O'yin boshlanganda variantlarni tayyorlash
+    if (availableWords.length > 0) {
+      setOptions(generateOptions(availableWords[0].uzbek, availableWords));
     }
   };
 
@@ -385,73 +411,76 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
   // To'g'ri javob uchun
   const handleCorrectAnswer = () => {
     setGameState((prev) => {
-      // Bosqichni yangilash
-      let newState = {
-        ...prev,
-        score: prev.score + 1,
-        completedWords: [
-          ...prev.completedWords,
-          words[prev.currentWordIndex].id,
-        ],
-      };
+      // Bosqich progressini yangilash
+      const progressUpdate = { ...prev.stageProgress };
 
-      const availableWords = words.slice(0, 10); // Har darsda 10 ta so'z
+      if (prev.currentStage === "memorize") {
+        progressUpdate.memorize.total = prev.stageProgress.memorize.total + 1;
+        progressUpdate.memorize.correct =
+          prev.stageProgress.memorize.correct + 1;
 
-      // So'zlar tugadimi?
-      if (prev.currentWordIndex < availableWords.length - 1) {
-        // Keyingi so'zga o'tish
-        const nextIndex = prev.currentWordIndex + 1;
-
-        // Keyingi so'z uchun variantlarni yangilash
-        if (prev.currentStage === "memorize") {
-          setOptions(
-            generateOptions(availableWords[nextIndex].uzbek, availableWords)
-          );
-        } else if (prev.currentStage === "arrange") {
-          newState.arrangedLetters = shuffleWord(
-            availableWords[nextIndex].english
-          );
-        }
-
-        return {
-          ...newState,
-          currentWordIndex: nextIndex,
-          mistakes: 0,
-        };
-      } else {
-        // Bosqich tugadi
-        const progressUpdate = { ...prev.stageProgress };
-
-        // Bosqich progressini 100% ga o'rnatish
-        if (prev.currentStage === "memorize") {
-          progressUpdate.memorize = 100;
-
+        // Agar 10 ta so'z o'rganilgan bo'lsa
+        if (progressUpdate.memorize.correct >= 10) {
+          progressUpdate.memorize.completed = true;
+          // Progress ni saqlash
+          saveStageProgress();
           // Bosqichni yakunlash va progress saqlash
           updateLessonProgress(25);
-        } else if (prev.currentStage === "match") {
-          progressUpdate.match = 100;
-
-          // Bosqichni yakunlash va progress saqlash
-          updateLessonProgress(50);
-        } else if (prev.currentStage === "arrange") {
-          progressUpdate.arrange = 100;
-
-          // Bosqichni yakunlash va progress saqlash
-          updateLessonProgress(75);
-        } else if (prev.currentStage === "write") {
-          progressUpdate.write = 100;
-
-          // Bosqichni yakunlash va progress saqlash
-          updateLessonProgress(100);
+          // Bosqichlar sahifasiga qaytish
+          setSelectedStep(null);
         }
 
         return {
-          ...newState,
+          ...prev,
+          currentWordIndex: prev.currentWordIndex + 1,
           stageProgress: progressUpdate,
-          currentStage: "stages",
+        };
+      } else if (prev.currentStage === "practice") {
+        progressUpdate.practice.total = prev.stageProgress.practice.total + 1;
+        progressUpdate.practice.correct =
+          prev.stageProgress.practice.correct + 1;
+        progressUpdate.practice.completed = true;
+
+        // Bosqichni yakunlash va progress saqlash
+        updateLessonProgress(50);
+
+        return {
+          ...prev,
+          currentStage: "arrange",
           currentWordIndex: 0,
+          stageProgress: progressUpdate,
+        };
+      } else if (prev.currentStage === "arrange") {
+        progressUpdate.arrange.total = prev.stageProgress.arrange.total + 1;
+        progressUpdate.arrange.correct = prev.stageProgress.arrange.correct + 1;
+        progressUpdate.arrange.completed = true;
+
+        // Bosqichni yakunlash va progress saqlash
+        updateLessonProgress(75);
+
+        return {
+          ...prev,
+          currentStage: "write",
+          currentWordIndex: 0,
+          stageProgress: progressUpdate,
+        };
+      } else if (prev.currentStage === "write") {
+        progressUpdate.write.total = prev.stageProgress.write.total + 1;
+        progressUpdate.write.correct = prev.stageProgress.write.correct + 1;
+        progressUpdate.write.completed = true;
+
+        // Bosqichni yakunlash va progress saqlash
+        updateLessonProgress(100);
+
+        return {
+          ...prev,
+          currentStage: "complete",
+          currentWordIndex: 0,
+          stageProgress: progressUpdate,
         };
       }
+
+      return prev;
     });
   };
 
@@ -494,7 +523,7 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
             setOptions(
               generateOptions(availableWords[nextIndex].uzbek, availableWords)
             );
-          } else if (prev.currentStage === "arrange") {
+          } else if (prev.currentStage === "practice") {
             return {
               ...prev,
               currentWordIndex: nextIndex,
@@ -532,13 +561,19 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
     allWords: Word[]
   ): string[] => {
     const options = [correctUzbek];
-    const availableWords = allWords.filter((w) => w.uzbek !== correctUzbek);
+    const otherWords = allWords.filter((w) => w.uzbek !== correctUzbek);
 
-    // 3 ta noto'g'ri variantlarni qo'shish
-    for (let i = 0; i < 3 && availableWords.length > 0; i++) {
-      const randomIndex = Math.floor(Math.random() * availableWords.length);
-      options.push(availableWords[randomIndex].uzbek);
-      availableWords.splice(randomIndex, 1);
+    // 3 ta random noto'g'ri variant tanlash
+    while (options.length < 4 && otherWords.length > 0) {
+      const randomIndex = Math.floor(Math.random() * otherWords.length);
+      const randomWord = otherWords[randomIndex];
+
+      if (!options.includes(randomWord.uzbek)) {
+        options.push(randomWord.uzbek);
+      }
+
+      // Ishlatilgan so'zni o'chirish
+      otherWords.splice(randomIndex, 1);
     }
 
     // Variantlarni aralashtirish
@@ -612,6 +647,47 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
     }
   };
 
+  // Progress ni saqlash
+  const saveStageProgress = async () => {
+    try {
+      if (selectedLesson) {
+        await AsyncStorage.setItem(
+          `stage_progress_${cardId}_${selectedLesson}`,
+          JSON.stringify(gameState.stageProgress)
+        );
+      }
+    } catch (error) {
+      console.error("Failed to save stage progress:", error);
+    }
+  };
+
+  // Progress ni yuklash
+  const loadStageProgress = async () => {
+    try {
+      if (selectedLesson) {
+        const progress = await AsyncStorage.getItem(
+          `stage_progress_${cardId}_${selectedLesson}`
+        );
+        if (progress) {
+          const parsedProgress = JSON.parse(progress);
+          setGameState((prev) => ({
+            ...prev,
+            stageProgress: parsedProgress,
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load stage progress:", error);
+    }
+  };
+
+  // useEffect da progress ni yuklash
+  useEffect(() => {
+    if (selectedLesson) {
+      loadStageProgress();
+    }
+  }, [selectedLesson]);
+
   if (!fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: "#3C5BFF" }} />;
   }
@@ -624,266 +700,142 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
   }));
 
   // MemorizeStage komponenti - birinchi bosqich
-  const MemorizeStage = ({ words, onComplete }) => {
-    return (
-      <View style={styles.gameContent}>
-        <ScrollView>
-          {words.map((word, index) => (
-            <View key={word.id} style={styles.wordCard}>
-              <Text style={styles.englishWord}>{word.english}</Text>
-              <Text style={styles.transcription}>{word.transcription}</Text>
-              <Text style={styles.uzbekWord}>{word.uzbek}</Text>
-            </View>
-          ))}
-        </ScrollView>
+  const MemorizeStageWrapper = ({ words, onComplete, onBack }) => {
+    const [showCorrect, setShowCorrect] = useState(false);
+    const [selectedAnswer, setSelectedAnswer] = useState(null);
+    const [currentProgress, setCurrentProgress] = useState(0);
+    const [currentOptions, setCurrentOptions] = useState([]);
 
-        <TouchableOpacity
-          style={styles.nextStepButton}
-          onPress={() => onComplete()}
-        >
-          <Text style={styles.nextStepButtonText}>
-            Keyingi bosqichga o'tish
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  // MatchStage komponenti - ikkinchi bosqich
-  const MatchStage = ({ words, onComplete, onBack }) => {
-    const [englishWords, setEnglishWords] = useState([]);
-    const [uzbekWords, setUzbekWords] = useState([]);
-    const [selectedEnglish, setSelectedEnglish] = useState(null);
-    const [selectedUzbek, setSelectedUzbek] = useState(null);
-    const [matchedPairs, setMatchedPairs] = useState([]);
-
-    useEffect(() => {
-      // So'zlarni shuffle qilish
-      const shuffledEnglish = [...words].sort(() => Math.random() - 0.5);
-      const shuffledUzbek = [...words].sort(() => Math.random() - 0.5);
-
-      setEnglishWords(shuffledEnglish);
-      setUzbekWords(shuffledUzbek);
-    }, [words]);
-
-    const handleEnglishSelect = (word) => {
-      setSelectedEnglish(word);
-
-      if (selectedUzbek) {
-        // Tekshirish
-        if (word.english === selectedUzbek.english) {
-          // To'g'ri juftlik
-          setMatchedPairs([...matchedPairs, word]);
-
-          // Barcha so'zlar juftlashtirildi
-          if (matchedPairs.length + 1 === words.length) {
-            // Bosqich tugadi
-            onComplete();
-          }
-        }
-
-        // Resetlash
-        setSelectedEnglish(null);
-        setSelectedUzbek(null);
-      }
-    };
-
-    const handleUzbekSelect = (word) => {
-      setSelectedUzbek(word);
-
-      if (selectedEnglish) {
-        // Tekshirish
-        if (word.english === selectedEnglish.english) {
-          // To'g'ri juftlik
-          setMatchedPairs([...matchedPairs, word]);
-
-          // Barcha so'zlar juftlashtirildi
-          if (matchedPairs.length + 1 === words.length) {
-            // Bosqich tugadi
-            onComplete();
-          }
-        }
-
-        // Resetlash
-        setSelectedEnglish(null);
-        setSelectedUzbek(null);
-      }
-    };
-
-    return (
-      <View style={styles.gameContent}>
-        <View style={styles.matchContainer}>
-          <View style={styles.matchColumnsContainer}>
-            <View style={styles.matchColumn}>
-              <Text style={styles.matchColumnTitle}>Inglizcha</Text>
-              {englishWords.map((word, index) => (
-                <TouchableOpacity
-                  key={`eng-${index}`}
-                  style={[
-                    styles.matchWord,
-                    selectedEnglish === word && styles.matchWordSelected,
-                    matchedPairs.includes(word) && styles.matchWordMatched,
-                  ]}
-                  onPress={() =>
-                    !matchedPairs.includes(word) && handleEnglishSelect(word)
-                  }
-                  disabled={matchedPairs.includes(word)}
-                >
-                  <Text style={styles.matchWordText}>{word.english}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={styles.matchColumn}>
-              <Text style={styles.matchColumnTitle}>O'zbekcha</Text>
-              {uzbekWords.map((word, index) => (
-                <TouchableOpacity
-                  key={`uzb-${index}`}
-                  style={[
-                    styles.matchWord,
-                    selectedUzbek === word && styles.matchWordSelected,
-                    matchedPairs.includes(word) && styles.matchWordMatched,
-                  ]}
-                  onPress={() =>
-                    !matchedPairs.includes(word) && handleUzbekSelect(word)
-                  }
-                  disabled={matchedPairs.includes(word)}
-                >
-                  <Text style={styles.matchWordText}>{word.uzbek}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <TouchableOpacity style={styles.nextStepButton} onPress={onBack}>
-            <Text style={styles.nextStepButtonText}>Orqaga qaytish</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  // ArrangeStage komponenti - uchinchi bosqich
-  const ArrangeStage = ({ words, onComplete, onBack }) => {
-    const [currentWordIndex, setCurrentWordIndex] = useState(0);
-    const [arrangedLetters, setArrangedLetters] = useState([]);
-    const [shuffledLetters, setShuffledLetters] = useState([]);
-
+    // Har bir so'z uchun variantlarni generatsiya qilish
     useEffect(() => {
       if (words && words.length > 0) {
-        resetWord();
+        const currentWord = words[gameState.currentWordIndex];
+        const newOptions = generateOptions(currentWord.uzbek, words);
+        setCurrentOptions(newOptions);
       }
-    }, [words, currentWordIndex]);
+    }, [gameState.currentWordIndex]);
 
-    const resetWord = () => {
-      const currentWord = words[currentWordIndex].english;
-      // So'zni harflarga ajratib, aralashtirish
-      const shuffled = currentWord.split("").sort(() => Math.random() - 0.5);
+    const handleAnswerSelect = (option) => {
+      if (selectedAnswer !== null) return;
 
-      setShuffledLetters(shuffled);
-      setArrangedLetters([]);
-    };
+      setSelectedAnswer(option);
+      const isCorrect = option === words[gameState.currentWordIndex].uzbek;
+      setShowCorrect(true);
 
-    const handleSelectLetter = (letter, index) => {
-      // Harfni shuffled arraydan olib tashlash
-      const newShuffled = [...shuffledLetters];
-      newShuffled.splice(index, 1);
-      setShuffledLetters(newShuffled);
-
-      // Harfni arranged arrayga qo'shish
-      setArrangedLetters([...arrangedLetters, letter]);
-
-      // So'z to'liq tuzilgani tekshirish
-      if (newShuffled.length === 0) {
-        // Tuzilgan so'z tekshirish
-        const arrangedWord = [...arrangedLetters, letter].join("");
-        if (arrangedWord === words[currentWordIndex].english) {
-          // To'g'ri tuzildi
-          if (currentWordIndex < words.length - 1) {
-            // Keyingi so'zga o'tish
-            setTimeout(() => {
-              setCurrentWordIndex(currentWordIndex + 1);
-            }, 1000);
-          } else {
-            // Barcha so'zlar tuzildi
-            onComplete();
-          }
-        } else {
-          // Noto'g'ri tuzildi, qayta boshlash
-          resetWord();
-        }
+      if (isCorrect) {
+        setCurrentProgress((prev) => prev + 1);
       }
     };
 
-    const handleResetArranged = () => {
-      resetWord();
+    const handleNextWord = () => {
+      if (gameState.currentWordIndex < words.length - 1) {
+        const nextIndex = gameState.currentWordIndex + 1;
+        setSelectedAnswer(null);
+        setShowCorrect(false);
+        setGameState((prev) => ({
+          ...prev,
+          currentWordIndex: nextIndex,
+        }));
+      } else {
+        // So'zlarni yodlash bosqichi tugadi
+        setGameState((prev) => ({
+          ...prev,
+          stageProgress: {
+            ...prev.stageProgress,
+            memorize: {
+              ...prev.stageProgress.memorize,
+              completed: true,
+            },
+          },
+        }));
+        // To'g'ridan to'g'ri bosqichlar ro'yxatiga qaytamiz
+        setSelectedStep(null);
+      }
     };
 
-    if (!words || words.length === 0) {
-      return (
-        <View>
-          <Text>So'z topilmadi</Text>
-        </View>
-      );
+    // Check if words array is empty or currentWordIndex is invalid
+    if (!words || !words.length || !words[gameState.currentWordIndex]) {
+      return null;
     }
 
+    const currentWord = words[gameState.currentWordIndex];
+
     return (
-      <View style={styles.gameContent}>
-        <View style={styles.arrangeContainer}>
-          <Text style={styles.practiceWord}>
-            {words[currentWordIndex].uzbek}
-          </Text>
-
-          <View style={styles.targetWordContainer}>
-            {arrangedLetters.map((letter, index) => (
-              <View key={`arranged-${index}`} style={styles.wordSlot}>
-                <Text style={styles.letterText}>{letter}</Text>
-              </View>
-            ))}
-
-            {shuffledLetters.length > 0 &&
-              Array(shuffledLetters.length)
-                .fill(null)
-                .map((_, index) => (
-                  <View key={`empty-${index}`} style={styles.wordSlot}>
-                    <Text style={styles.letterText}></Text>
-                  </View>
-                ))}
+      <View style={styles.memorizeContainer}>
+        <View style={styles.memorizeHeader}>
+          <TouchableOpacity style={styles.memorizeBackButton} onPress={onBack}>
+            <FontAwesome5 name="arrow-left" size={20} color="#3C5BFF" />
+          </TouchableOpacity>
+          <Text style={styles.memorizeTitle}>So'zlarni yodlash</Text>
+          <View style={styles.progressContainer}>
+            <Text style={styles.progressText}>{currentProgress}/10</Text>
           </View>
+        </View>
 
-          <View style={styles.lettersContainer}>
-            {shuffledLetters.map((letter, index) => (
-              <TouchableOpacity
-                key={`letter-${index}`}
-                style={styles.letterButton}
-                onPress={() => handleSelectLetter(letter, index)}
-              >
-                <Text style={{ color: "white", fontSize: 20 }}>{letter}</Text>
-              </TouchableOpacity>
-            ))}
+        <View style={styles.gameContentContainer}>
+          <Text style={styles.memorizeWord}>{currentWord.english}</Text>
+
+          <View style={styles.optionsGrid}>
+            {currentOptions.map((option, index) => {
+              const isSelected = selectedAnswer === option;
+              const isCorrectOption = option === currentWord.uzbek;
+              const showAsCorrect = showCorrect && isCorrectOption;
+              const showAsWrong = showCorrect && isSelected && !isCorrectOption;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.optionGridItem,
+                    isSelected && !showCorrect && styles.memorizeSelectedOption,
+                    showAsCorrect && styles.memorizeCorrectOption,
+                    showAsWrong && styles.memorizeWrongOption,
+                  ]}
+                  onPress={() => handleAnswerSelect(option)}
+                  disabled={showCorrect}
+                >
+                  <Text
+                    style={[
+                      styles.optionGridText,
+                      (showAsCorrect || showAsWrong) && styles.optionTextWhite,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-
-          {arrangedLetters.length > 0 && (
-            <TouchableOpacity
-              style={styles.resetButton}
-              onPress={handleResetArranged}
-            >
-              <Text style={{ color: "white" }}>Qayta boshlash</Text>
-            </TouchableOpacity>
-          )}
 
           <TouchableOpacity
-            style={[styles.nextStepButton, { marginTop: 20 }]}
-            onPress={onBack}
+            style={[
+              styles.nextButton,
+              !showCorrect && styles.nextButtonDisabled,
+            ]}
+            onPress={handleNextWord}
+            disabled={!showCorrect}
           >
-            <Text style={styles.nextStepButtonText}>Orqaga qaytish</Text>
+            <Text style={styles.nextButtonText}>Keyingi</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.memorizeProgress}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${(currentProgress / 10) * 100}%`,
+                },
+              ]}
+            />
+          </View>
         </View>
       </View>
     );
   };
 
-  // PracticeStage komponenti - ikkinchi bosqich
+  // MatchStage komponenti o'rniga PracticeStage
   const PracticeStage = ({ words, onComplete, onBack }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [showTranslation, setShowTranslation] = useState(false);
@@ -957,109 +909,82 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
     );
   };
 
-  // TestStage komponenti - uchunchi bosqich
-  const TestStage = ({ words, onComplete, onBack }) => {
-    const [currentQuestion, setCurrentQuestion] = useState(0);
-    const [score, setScore] = useState(0);
-    const [selectedOption, setSelectedOption] = useState(null);
-    const [isCorrect, setIsCorrect] = useState(null);
-    const [options, setOptions] = useState([]);
+  // ArrangeStage komponenti - uchinchi bosqich
+  const ArrangeStage = ({ words, onComplete, onBack }) => {
+    const [currentWordIndex, setCurrentWordIndex] = useState(0);
+    const [arrangedLetters, setArrangedLetters] = useState([]);
+    const [shuffledLetters, setShuffledLetters] = useState([]);
 
     useEffect(() => {
-      const shuffleArray = (array) => {
-        const shuffled = [...array];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        return shuffled;
-      };
-
-      const getRandomOptions = () => {
-        const correctAnswer = words[currentQuestion].uzbek;
-        const otherWords = words
-          .filter((word) => word.uzbek !== correctAnswer)
-          .map((word) => word.uzbek);
-        const shuffledWords = shuffleArray(otherWords);
-        const wrongOptions = shuffledWords.slice(0, 3);
-        const allOptions = shuffleArray([...wrongOptions, correctAnswer]);
-        return allOptions;
-      };
-
-      setOptions(getRandomOptions());
-      setSelectedOption(null);
-      setIsCorrect(null);
-    }, [currentQuestion, words]);
-
-    const handleAnswer = (option) => {
-      setSelectedOption(option);
-      const correct = option === words[currentQuestion].uzbek;
-      setIsCorrect(correct);
-
-      if (correct) {
-        setScore(score + 1);
+      if (words && words.length > 0) {
+        resetWord();
       }
+    }, [words, currentWordIndex]);
 
-      setTimeout(() => {
-        if (currentQuestion < words.length - 1) {
-          setCurrentQuestion(currentQuestion + 1);
+    const resetWord = () => {
+      const currentWord = words[currentWordIndex].english;
+      // So'zni harflarga ajratib, aralashtirish
+      const shuffled = currentWord.split("").sort(() => Math.random() - 0.5);
+
+      setShuffledLetters(shuffled);
+      setArrangedLetters([]);
+    };
+
+    const handleSelectLetter = (letter, index) => {
+      // Harfni shuffled arraydan olib tashlash
+      const newShuffled = [...shuffledLetters];
+      newShuffled.splice(index, 1);
+      setShuffledLetters(newShuffled);
+
+      // Harfni arranged arrayga qo'shish
+      setArrangedLetters([...arrangedLetters, letter]);
+
+      // So'z to'liq tuzilgani tekshirish
+      if (newShuffled.length === 0) {
+        // Tuzilgan so'z tekshirish
+        const arrangedWord = [...arrangedLetters, letter].join("");
+        if (arrangedWord === words[currentWordIndex].english) {
+          handleCorrectAnswer();
         } else {
-          onComplete(score + (correct ? 1 : 0), words.length);
+          handleWrongAnswer();
+          // Yangi so'z uchun harflarni aralashtirish
+          setGameState((prev) => ({
+            ...prev,
+            arrangedLetters: shuffleWord(words[currentWordIndex].english),
+          }));
         }
-      }, 1000);
+      }
     };
 
     return (
-      <View style={styles.gameContent}>
-        <View style={styles.testContainer}>
-          <View style={styles.testProgress}>
-            <TouchableOpacity style={styles.testBackButton} onPress={onBack}>
-              <FontAwesome5 name="arrow-left" size={16} color="#3C5BFF" />
-              <Text style={styles.testBackButtonText}>Orqaga</Text>
+      <View style={styles.arrangeContainer}>
+        <View style={styles.targetWordContainer}>
+          {shuffledLetters.map((letter, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.wordSlot}
+              onPress={() => handleSelectLetter(letter, index)}
+            >
+              <Text style={styles.letterText}>{letter}</Text>
             </TouchableOpacity>
-            <Text style={styles.testProgressText}>
-              {currentQuestion + 1}/{words.length}
-            </Text>
-          </View>
-
-          <Text style={styles.testQuestion}>
-            "{words[currentQuestion].english}" so'zining tarjimasi qaysi?
-          </Text>
-
-          <View style={styles.testOptions}>
-            {options.map((option, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.testOption,
-                  selectedOption === option &&
-                    (isCorrect
-                      ? styles.testOptionCorrect
-                      : styles.testOptionWrong),
-                ]}
-                onPress={() => handleAnswer(option)}
-                disabled={selectedOption !== null}
-              >
-                <Text
-                  style={[
-                    styles.testOptionText,
-                    selectedOption === option &&
-                      isCorrect &&
-                      styles.testOptionTextCorrect,
-                  ]}
-                >
-                  {option}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.testScore}>
-            <Text style={styles.testScoreText}>
-              Natija: {score}/{currentQuestion}
-            </Text>
-          </View>
+          ))}
         </View>
+
+        <View style={styles.lettersContainer}>
+          {arrangedLetters.map((letter, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.usedLetterButton}
+              onPress={() => handleSelectLetter(letter, index)}
+            >
+              <Text style={styles.letterText}>{letter}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.resetButton} onPress={resetWord}>
+          <Text style={styles.resetButtonText}>Qayta aralashtirish</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -1103,26 +1028,7 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
   const renderGameStage = () => {
     if (gameState.currentStage === "memorize") {
       return (
-        <MemorizeStage
-          words={words}
-          onComplete={() => {
-            setGameState({
-              ...gameState,
-              currentStage: "match",
-              currentWordIndex: 0,
-              stageProgress: {
-                ...gameState.stageProgress,
-                memorize: 100,
-              },
-            });
-            // Bosqichni yakunlash va progress saqlash
-            updateLessonProgress(25);
-          }}
-        />
-      );
-    } else if (gameState.currentStage === "match") {
-      return (
-        <MatchStage
+        <MemorizeStageWrapper
           words={words}
           onComplete={() => {
             setGameState({
@@ -1131,10 +1037,28 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
               currentWordIndex: 0,
               stageProgress: {
                 ...gameState.stageProgress,
-                match: 100,
+                memorize: { ...initialStageProgress, completed: true },
               },
             });
-            // Bosqichni yakunlash va progress saqlash
+            updateLessonProgress(25);
+          }}
+          onBack={() => setSelectedStep(null)}
+        />
+      );
+    } else if (gameState.currentStage === "practice") {
+      return (
+        <PracticeStage
+          words={words}
+          onComplete={() => {
+            setGameState({
+              ...gameState,
+              currentStage: "arrange",
+              currentWordIndex: 0,
+              stageProgress: {
+                ...gameState.stageProgress,
+                practice: { ...initialStageProgress, completed: true },
+              },
+            });
             updateLessonProgress(50);
           }}
           onBack={() => {
@@ -1157,16 +1081,15 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
               currentWordIndex: 0,
               stageProgress: {
                 ...gameState.stageProgress,
-                arrange: 100,
+                arrange: { ...initialStageProgress, completed: true },
               },
             });
-            // Bosqichni yakunlash va progress saqlash
             updateLessonProgress(75);
           }}
           onBack={() => {
             setGameState({
               ...gameState,
-              currentStage: "match",
+              currentStage: "practice",
               currentWordIndex: 0,
             });
           }}
@@ -1183,10 +1106,9 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
               currentWordIndex: 0,
               stageProgress: {
                 ...gameState.stageProgress,
-                write: 100,
+                write: { ...initialStageProgress, completed: true },
               },
             });
-            // Bosqichni yakunlash va progress saqlash
             updateLessonProgress(100);
             // Darsni yakunlash
             if (selectedLesson) {
@@ -1196,7 +1118,7 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
           onBack={() => {
             setGameState({
               ...gameState,
-              currentStage: "arrange",
+              currentStage: "write",
               currentWordIndex: 0,
             });
           }}
@@ -1218,6 +1140,11 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
               selectedEnglishWord: null,
               selectedUzbekWord: null,
               arrangedLetters: [],
+              stageProgress: {
+                ...initialGameState.stageProgress,
+              },
+              shuffledLetters: [],
+              completed: false,
             });
           }}
           onNext={() => setSelectedStep(null)}
@@ -1352,105 +1279,173 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
       </View>
 
       {selectedLesson !== null ? (
-        <View style={styles.lessonContainer}>
-          <View style={styles.lessonHeader}>
-            <TouchableOpacity
-              style={styles.backToLessons}
-              onPress={() => setSelectedLesson(null)}
-            >
-              <FontAwesome5 name="arrow-left" size={16} color="#3C5BFF" />
-              <Text style={styles.backToLessonsText}>Darslar</Text>
-            </TouchableOpacity>
-            <Text style={styles.lessonHeaderTitle}>{selectedLesson}-dars</Text>
-          </View>
-
-          {/* LessonGame style stage cards */}
-          <ScrollView style={{ flex: 1 }}>
-            <View style={styles.stageCardsList}>
+        selectedStep !== null ? (
+          <View style={styles.stepContentContainer}>{renderGameStage()}</View>
+        ) : (
+          <View style={styles.lessonContainer}>
+            <View style={styles.lessonHeader}>
               <TouchableOpacity
-                style={styles.stageCardItem}
-                onPress={() => handleStepSelect(1)}
+                style={styles.backToLessons}
+                onPress={() => setSelectedLesson(null)}
               >
-                <View style={styles.stageIconContainer}>
-                  <FontAwesome5 name="brain" size={18} color="#3C5BFF" />
-                </View>
-                <Text style={styles.stageCardTitle}>So'zlarni yodlash</Text>
-                <Text style={styles.stageCardCounter}>0/20</Text>
+                <FontAwesome5 name="arrow-left" size={16} color="#3C5BFF" />
+                <Text style={styles.backToLessonsText}>Darslar</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.stageCardItem}
-                onPress={() => handleStepSelect(2)}
-              >
-                <View style={styles.stageIconContainer}>
-                  <FontAwesome5 name="sync" size={18} color="#3C5BFF" />
-                </View>
-                <Text style={styles.stageCardTitle}>So'zlarni takrorlash</Text>
-                <Text style={styles.stageCardCounter}>0/20</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.stageCardItem}
-                onPress={() => handleStepSelect(3)}
-              >
-                <View style={styles.stageIconContainer}>
-                  <FontAwesome5 name="exchange-alt" size={18} color="#3C5BFF" />
-                </View>
-                <Text style={styles.stageCardTitle}>
-                  So'zlarni mustahkamlash
-                </Text>
-                <Text style={styles.stageCardCounter}>0/20</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.stageCardItem}
-                onPress={() => handleStepSelect(4)}
-              >
-                <View style={styles.stageIconContainer}>
-                  <FontAwesome5 name="pen" size={18} color="#3C5BFF" />
-                </View>
-                <Text style={styles.stageCardTitle}>So'zlarni yozish</Text>
-                <Text style={styles.stageCardCounter}>0/20</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.wordsListContainer}>
-              <Text style={styles.wordsListTitle}>O'rganiladigan so'zlar</Text>
-              {words.map((word, index) => (
-                <View key={word.id} style={styles.wordListItem}>
-                  <Text style={styles.wordIndex}>{index + 1}.</Text>
-                  <Text style={styles.wordEnglish}>{word.english}</Text>
-                  <Text style={styles.wordUzbek}>{word.uzbek}</Text>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      ) : selectedStep !== null ? (
-        <View style={styles.stepContentContainer}>
-          <View style={styles.stepHeader}>
-            <TouchableOpacity
-              style={styles.backToLessons}
-              onPress={() => setSelectedStep(null)}
-            >
-              <FontAwesome5 name="arrow-left" size={16} color="#3C5BFF" />
-              <Text style={styles.backToLessonsText}>
+              <Text style={styles.lessonHeaderTitle}>
                 {selectedLesson}-dars
               </Text>
-            </TouchableOpacity>
-            <Text style={styles.stepHeaderTitle}>
-              {selectedStep === 1
-                ? "O'rganish"
-                : selectedStep === 2
-                ? "Mustahkamlash"
-                : selectedStep === 3
-                ? "Test"
-                : "Natijalar"}
-            </Text>
-          </View>
+            </View>
 
-          <View style={styles.stepContent}>{renderGameStage()}</View>
-        </View>
+            {/* LessonGame style stage cards */}
+            <ScrollView style={{ flex: 1 }}>
+              <View style={styles.stageCardsList}>
+                <TouchableOpacity
+                  style={styles.stageCardItem}
+                  onPress={() => {
+                    handleStepSelect(1);
+                    const availableWords = words.slice(0, 10);
+                    setGameState({
+                      currentStage: "memorize",
+                      currentWordIndex: 0,
+                      score: 0,
+                      mistakes: 0,
+                      completedWords: [],
+                      matchedPairs: [],
+                      selectedEnglishWord: null,
+                      selectedUzbekWord: null,
+                      arrangedLetters: [],
+                      shuffledLetters: [],
+                      completed: false,
+                      stageProgress: {
+                        ...initialGameState.stageProgress,
+                      },
+                    });
+                    if (availableWords.length > 0) {
+                      setOptions(
+                        generateOptions(availableWords[0].uzbek, availableWords)
+                      );
+                    }
+                  }}
+                >
+                  <View style={styles.stageIconContainer}>
+                    {gameState.stageProgress.memorize.completed ? (
+                      <FontAwesome5
+                        name="check-circle"
+                        size={18}
+                        color="#4CAF50"
+                      />
+                    ) : (
+                      <FontAwesome5 name="brain" size={18} color="#3C5BFF" />
+                    )}
+                  </View>
+                  <Text style={styles.stageCardTitle}>So'zlarni yodlash</Text>
+                  <Text style={styles.stageCardCounter}>
+                    {gameState.stageProgress.memorize.correct}/{10}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.stageCardItem,
+                    !gameState.stageProgress.memorize.completed &&
+                      styles.disabledCard,
+                  ]}
+                  onPress={() => handleStepSelect(2)}
+                  disabled={!gameState.stageProgress.memorize.completed}
+                >
+                  <View style={styles.stageIconContainer}>
+                    {gameState.stageProgress.practice.completed ? (
+                      <FontAwesome5
+                        name="check-circle"
+                        size={18}
+                        color="#4CAF50"
+                      />
+                    ) : (
+                      <FontAwesome5 name="sync" size={18} color="#3C5BFF" />
+                    )}
+                  </View>
+                  <Text style={styles.stageCardTitle}>
+                    So'zlarni takrorlash
+                  </Text>
+                  <Text style={styles.stageCardCounter}>
+                    {gameState.stageProgress.practice.correct}/{10}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.stageCardItem,
+                    !gameState.stageProgress.practice.completed &&
+                      styles.disabledCard,
+                  ]}
+                  onPress={() => handleStepSelect(3)}
+                  disabled={!gameState.stageProgress.practice.completed}
+                >
+                  <View style={styles.stageIconContainer}>
+                    {gameState.stageProgress.arrange.completed ? (
+                      <FontAwesome5
+                        name="check-circle"
+                        size={18}
+                        color="#4CAF50"
+                      />
+                    ) : (
+                      <FontAwesome5
+                        name="exchange-alt"
+                        size={18}
+                        color="#3C5BFF"
+                      />
+                    )}
+                  </View>
+                  <Text style={styles.stageCardTitle}>
+                    So'zlarni mustahkamlash
+                  </Text>
+                  <Text style={styles.stageCardCounter}>
+                    {gameState.stageProgress.arrange.correct}/{10}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.stageCardItem,
+                    !gameState.stageProgress.arrange.completed &&
+                      styles.disabledCard,
+                  ]}
+                  onPress={() => handleStepSelect(4)}
+                  disabled={!gameState.stageProgress.arrange.completed}
+                >
+                  <View style={styles.stageIconContainer}>
+                    {gameState.stageProgress.write.completed ? (
+                      <FontAwesome5
+                        name="check-circle"
+                        size={18}
+                        color="#4CAF50"
+                      />
+                    ) : (
+                      <FontAwesome5 name="pen" size={18} color="#3C5BFF" />
+                    )}
+                  </View>
+                  <Text style={styles.stageCardTitle}>So'zlarni yozish</Text>
+                  <Text style={styles.stageCardCounter}>
+                    {gameState.stageProgress.write.correct}/{10}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.wordsListContainer}>
+                <Text style={styles.wordsListTitle}>
+                  O'rganiladigan so'zlar
+                </Text>
+                {words.map((word, index) => (
+                  <View key={word.id} style={styles.wordListItem}>
+                    <Text style={styles.wordIndex}>{index + 1}.</Text>
+                    <Text style={styles.wordEnglish}>{word.english}</Text>
+                    <Text style={styles.wordUzbek}>{word.uzbek}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )
       ) : (
         <ScrollView style={styles.content}>
           <View style={styles.lessonCardsContainer}>
@@ -2000,16 +1995,14 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   selectedOption: {
-    borderColor: "#4C2A86",
     backgroundColor: "#E6DEF5",
+    borderColor: "#4C2A86",
   },
   correctOption: {
-    borderColor: "#4CAF50",
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#4CAF50",
   },
   wrongOption: {
-    borderColor: "#F44336",
-    backgroundColor: "#FFEBEE",
+    backgroundColor: "#FF5252",
   },
   optionText: {
     fontSize: 16,
@@ -2610,6 +2603,155 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     fontFamily: "Lexend_400Regular",
+  },
+
+  // Add new styles
+  memorizeContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    padding: 20,
+  },
+
+  memorizeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+    paddingTop: 10,
+  },
+
+  memorizeBackButton: {
+    padding: 8,
+  },
+
+  memorizeTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    fontFamily: "Lexend_400Regular",
+  },
+
+  progressContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+
+  progressText: {
+    fontSize: 14,
+    color: "#3C5BFF",
+    fontWeight: "500",
+    fontFamily: "Lexend_400Regular",
+  },
+
+  gameContentContainer: {
+    flex: 1,
+    justifyContent: "flex-start",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 40,
+  },
+
+  memorizeWord: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: "center",
+    marginBottom: 30,
+    fontFamily: "Lexend_400Regular",
+  },
+
+  optionsGrid: {
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+
+  optionGridItem: {
+    width: "48%",
+    aspectRatio: 2,
+    backgroundColor: "#F0EAFB",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "transparent",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    marginBottom: 16,
+  },
+
+  optionGridText: {
+    fontSize: 18,
+    color: "#333",
+    fontWeight: "500",
+    fontFamily: "Lexend_400Regular",
+    textAlign: "center",
+  },
+
+  optionTextWhite: {
+    color: "#FFFFFF",
+  },
+
+  memorizeSelectedOption: {
+    backgroundColor: "#E6DEF5",
+    borderColor: "#4C2A86",
+  },
+
+  memorizeCorrectOption: {
+    backgroundColor: "#4CAF50",
+  },
+
+  memorizeWrongOption: {
+    backgroundColor: "#FF5252",
+  },
+
+  nextButton: {
+    backgroundColor: "#3C5BFF",
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 24,
+  },
+
+  nextButtonDisabled: {
+    backgroundColor: "#B0BEC5",
+  },
+
+  nextButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+    fontFamily: "Lexend_400Regular",
+  },
+
+  memorizeProgress: {
+    position: "absolute",
+    bottom: 100,
+    left: 20,
+    right: 20,
+  },
+
+  progressBar: {
+    height: 8,
+    backgroundColor: "#F0EAFB",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#3C5BFF",
+    borderRadius: 4,
   },
 });
 

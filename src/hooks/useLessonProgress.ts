@@ -8,130 +8,134 @@ import {
   saveCoins,
 } from "../utils/LessonUtils";
 
+export type LessonProgressType = {
+  [key: number]: number;
+};
+
 /**
  * Custom hook to manage lesson progress
  */
-export const useLessonProgress = (
-  cardId: number,
-  initialCoins: number,
-  addCoins: (amount: number) => void
-) => {
-  // States
-  const [lessonProgress, setLessonProgress] = useState<Record<number, number>>(
-    {}
-  );
+export const useLessonProgress = (cardId: number) => {
   const [completedLessons, setCompletedLessons] = useState<number[]>([]);
+  const [lessonProgress, setLessonProgress] = useState<LessonProgressType>({});
   const [learnedWords, setLearnedWords] = useState<string[]>([]);
 
-  // Progressni yuklash
   const loadProgress = async () => {
     try {
-      const { progress, completedLessons, learnedWords } =
-        await loadProgressUtil();
-      setLessonProgress(progress);
-      setCompletedLessons(completedLessons);
-      setLearnedWords(learnedWords);
+      // Load progress data
+      const progress = await AsyncStorage.getItem(`progress_card_${cardId}`);
+      if (progress) {
+        const parsedProgress = JSON.parse(progress);
+        setCompletedLessons(parsedProgress.completedLessons || []);
+        setLessonProgress(parsedProgress.lessonProgress || {});
+      }
+
+      // Load learned words data
+      const learned = await AsyncStorage.getItem(
+        `learned_words_card_${cardId}`
+      );
+      if (learned) {
+        setLearnedWords(JSON.parse(learned));
+      }
     } catch (error) {
       console.error("Error loading progress:", error);
     }
   };
 
-  // Tanga (coins) olish
-  const getCoins = async () => {
+  const saveProgress = async () => {
     try {
-      const storedCoins = await AsyncStorage.getItem("coins");
-      if (storedCoins) {
-        // Use addCoins instead of setCoins
-        const parsedCoins = parseInt(storedCoins);
-        addCoins(parsedCoins - initialCoins); // Add the difference to update to the stored value
-      }
+      // Save progress to AsyncStorage
+      const progressData = {
+        completedLessons,
+        lessonProgress,
+      };
+
+      await AsyncStorage.setItem(
+        `progress_card_${cardId}`,
+        JSON.stringify(progressData)
+      );
+
+      // Save learned words
+      await AsyncStorage.setItem(
+        `learned_words_card_${cardId}`,
+        JSON.stringify(learnedWords)
+      );
     } catch (error) {
-      console.error("Error fetching coins:", error);
+      console.error("Failed to save progress:", error);
     }
   };
 
-  // UseEffect hooks - component mount bo'lganda
-  useEffect(() => {
-    loadProgress();
-    getCoins();
-  }, []);
+  const updateProgress = (lessonId: number, percentage: number) => {
+    if (lessonProgress[lessonId] < percentage) {
+      const newProgress = { ...lessonProgress };
+      newProgress[lessonId] = percentage;
+      setLessonProgress(newProgress);
+      saveProgress();
+      return true; // Progress was updated
+    }
+    return false; // No update needed
+  };
 
-  // Dars tugaganmi tekshirish
+  const markLessonComplete = (lessonId: number) => {
+    if (!completedLessons.includes(lessonId)) {
+      const newCompletedLessons = [...completedLessons, lessonId];
+      setCompletedLessons(newCompletedLessons);
+
+      // Set progress to 100%
+      const newProgress = { ...lessonProgress };
+      newProgress[lessonId] = 100;
+      setLessonProgress(newProgress);
+
+      saveProgress();
+      return true; // Lesson was marked as complete
+    }
+    return false; // Lesson was already complete
+  };
+
+  const markWordLearned = (wordId: string) => {
+    if (!learnedWords.includes(wordId)) {
+      const newLearnedWords = [...learnedWords, wordId];
+      setLearnedWords(newLearnedWords);
+      saveProgress();
+      return true; // Word was marked as learned
+    }
+    return false; // Word was already learned
+  };
+
   const isLessonCompleted = (lessonId: number) => {
     return completedLessons.includes(lessonId);
   };
 
-  // Dars mavjudmi tekshirish
   const isLessonAvailable = (lessonId: number) => {
-    return lessonId === 1 || completedLessons.includes(lessonId - 1);
+    // First lesson is always available
+    if (lessonId === 1) return true;
+
+    // Other lessons are available if the previous lesson is completed
+    return isLessonCompleted(lessonId - 1);
   };
 
-  // Dars progressini foizda olish
   const getLessonProgressPercentage = (lessonId: number) => {
     return lessonProgress[lessonId] || 0;
   };
 
-  // Dars progressini yangilash
-  const updateLessonProgress = (
-    lessonId: number,
-    progress: number,
-    words: Word[],
-    coins: number
-  ) => {
-    if (!lessonId) return;
-
-    // Progressni o'rnatish
-    const newProgress = {
-      ...lessonProgress,
-      [lessonId]: Math.max(progress, lessonProgress[lessonId] || 0),
-    };
-
-    setLessonProgress(newProgress);
-
-    // Progress 100% ga yetganda, darsni tugatilgan deb belgilash
-    if (progress === 100 && !completedLessons.includes(lessonId)) {
-      const newCompletedLessons = [...completedLessons, lessonId];
-      setCompletedLessons(newCompletedLessons);
-
-      // O'rganilgan so'zlarni saqlash
-      const newLearnedWords = [...learnedWords];
-      words.forEach((word) => {
-        if (!newLearnedWords.includes(word.english)) {
-          newLearnedWords.push(word.english);
-        }
-      });
-      setLearnedWords(newLearnedWords);
-
-      // Tangalarni ko'paytirish
-      const earnedCoins = 10; // Har bir dars uchun 10 tanga
-      addCoins(earnedCoins);
-
-      // Progressni saqlash
-      saveProgress(newProgress, newCompletedLessons, newLearnedWords);
-      saveCoins(coins + earnedCoins);
-
-      return {
-        completed: true,
-        earnedCoins,
-      };
-    } else {
-      // Progressni saqlash
-      saveProgress(newProgress, completedLessons, learnedWords);
-      return {
-        completed: false,
-      };
-    }
-  };
+  // Load progress on mount
+  useEffect(() => {
+    loadProgress();
+  }, [cardId]);
 
   return {
-    lessonProgress,
     completedLessons,
+    lessonProgress,
     learnedWords,
+    loadProgress,
+    saveProgress,
+    updateProgress,
+    markLessonComplete,
+    markWordLearned,
     isLessonCompleted,
     isLessonAvailable,
     getLessonProgressPercentage,
-    updateLessonProgress,
-    loadProgress,
-    getCoins,
   };
 };
+
+export default useLessonProgress;
