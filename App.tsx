@@ -64,6 +64,18 @@ const App = () => {
     Lexend_400Regular,
   });
 
+  const addLoginNotification = () => {
+    const loginNotification: Notification = {
+      id: Date.now().toString(),
+      title: "Xush kelibsiz!",
+      message: "Tizimga muvaffaqiyatli kirdingiz. O'rganishni davom eting!",
+      type: "login",
+      timestamp: new Date(),
+      read: false,
+    };
+    setNotifications((prev) => [loginNotification, ...prev]);
+  };
+
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
@@ -71,18 +83,7 @@ const App = () => {
         if (authData && authData.user) {
           setIsAuthenticated(true);
           setIsAdmin(authData.user.isAdmin || false);
-
-          const loginNotification: Notification = {
-            id: Date.now().toString(),
-            title: "Xush kelibsiz!",
-            message:
-              "Tizimga muvaffaqiyatli kirdingiz. O'rganishni davom eting!",
-            type: "login",
-            timestamp: new Date(),
-            read: false,
-          };
-
-          setNotifications((prev) => [loginNotification, ...prev]);
+          addLoginNotification();
         } else {
           setIsAuthenticated(false);
           setIsAdmin(false);
@@ -144,7 +145,10 @@ const App = () => {
       if (currentScreen === "SignUp") {
         return (
           <SignUpScreen
-            setIsAuthenticated={setIsAuthenticated}
+            setIsAuthenticated={(value) => {
+              setIsAuthenticated(value);
+              if (value) addLoginNotification();
+            }}
             setScreen={setCurrentScreen}
             onLogin={() => setCurrentScreen("Auth")}
           />
@@ -152,7 +156,10 @@ const App = () => {
       }
       return (
         <AuthScreen
-          setIsAuthenticated={setIsAuthenticated}
+          setIsAuthenticated={(value) => {
+            setIsAuthenticated(value);
+            if (value) addLoginNotification();
+          }}
           setScreen={setCurrentScreen}
           onSignUp={() => setCurrentScreen("SignUp")}
         />
