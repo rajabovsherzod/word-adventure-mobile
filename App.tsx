@@ -1,17 +1,16 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   StyleSheet,
-  AppState,
-  Animated,
-  Easing,
   StatusBar,
-  TouchableOpacity,
-  Text,
   ActivityIndicator,
+  Text,
+  TouchableOpacity,
 } from "react-native";
-import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
+import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
+
+// Import screens
 import LessonsScreen from "./src/screens/LessonsScreen";
 import CreateLessonScreen from "./src/screens/CreateLessonScreen";
 import AuthScreen from "./src/screens/AuthScreen";
@@ -23,6 +22,7 @@ import ProfileScreen from "./src/screens/ProfileScreen";
 import AdminPanelScreen from "./src/screens/AdminPanelScreen";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
 import SuggestedLessonsScreen from "./src/screens/SuggestedLessonsScreen";
+
 import { Word, getWordById } from "./src/data/words";
 import { checkAuth } from "./src/services/api";
 
@@ -53,19 +53,15 @@ const App = () => {
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<number>(1);
   const [selectedLessonId, setSelectedLessonId] = useState<number>(1);
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const spinAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.3)).current;
   const [isAdmin, setIsAdmin] = useState<boolean>(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [selectedLevelCard, setSelectedLevelCard] = useState<{
-    id: number;
-    title: string;
-  } | null>(null);
   const [coins, setCoins] = useState<number>(100);
   const [selectedDictionaryWord, setSelectedDictionaryWord] =
     useState<Word | null>(null);
+
+  const [fontsLoaded] = useFonts({
+    Lexend_400Regular,
+  });
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -75,7 +71,6 @@ const App = () => {
           setIsAuthenticated(true);
           setIsAdmin(authData.user.isAdmin || false);
 
-          // Add login notification
           const loginNotification: Notification = {
             id: Date.now().toString(),
             title: "Xush kelibsiz!",
@@ -86,10 +81,7 @@ const App = () => {
             read: false,
           };
 
-          setNotifications((prevNotifications) => [
-            loginNotification,
-            ...prevNotifications,
-          ]);
+          setNotifications((prev) => [loginNotification, ...prev]);
         } else {
           setIsAuthenticated(false);
           setIsAdmin(false);
@@ -106,95 +98,10 @@ const App = () => {
     checkAuthStatus();
   }, []);
 
-  const spin = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
-
-  const handleScreenChange = useCallback(
-    (screen: string) => {
-      if (currentScreen === screen) return;
-
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-
-      setIsLoading(true);
-      fadeAnim.setValue(0);
-      spinAnim.setValue(0);
-      scaleAnim.setValue(0.3);
-
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 0,
-        useNativeDriver: true,
-      }).start(() => {
-        Animated.loop(
-          Animated.timing(spinAnim, {
-            toValue: 1,
-            duration: 700,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          })
-        ).start();
-
-        setTimeout(() => {
-          setCurrentScreen(screen);
-
-          requestAnimationFrame(() => {
-            Animated.parallel([
-              Animated.timing(fadeAnim, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true,
-                easing: Easing.in(Easing.cubic),
-              }),
-              Animated.timing(scaleAnim, {
-                toValue: 0.3,
-                duration: 200,
-                useNativeDriver: true,
-                easing: Easing.in(Easing.cubic),
-              }),
-            ]).start(() => {
-              setIsLoading(false);
-            });
-          });
-        }, 100);
-      });
-    },
-    [currentScreen, fadeAnim, spinAnim, scaleAnim]
-  );
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        setIsLoading(false);
-        fadeAnim.setValue(0);
-        spinAnim.setValue(0);
-        scaleAnim.setValue(0.3);
-      }
-    });
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      subscription.remove();
-    };
-  }, [fadeAnim, spinAnim, scaleAnim]);
-
-  const handleStartGame = useCallback(
-    (lesson: Lesson) => {
-      setCurrentLesson(lesson);
-      handleScreenChange("Game");
-    },
-    [handleScreenChange]
-  );
-
-  const handleSignUp = useCallback(() => {
-    handleScreenChange("SignUp");
-  }, [handleScreenChange]);
+  const handleStartGame = useCallback((lesson: Lesson) => {
+    setCurrentLesson(lesson);
+    setCurrentScreen("Game");
+  }, []);
 
   const handleWordSelect = (word: Word) => {
     const fullWord = getWordById(word.id);
@@ -202,75 +109,33 @@ const App = () => {
   };
 
   const markNotificationAsRead = useCallback((id: string) => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.map((notification) =>
+    setNotifications((prev) =>
+      prev.map((notification) =>
         notification.id === id ? { ...notification, read: true } : notification
       )
     );
   }, []);
 
-  const handleStartLesson = (cardId: number, lessonId: number) => {
-    setSelectedCardId(cardId);
-    setSelectedLessonId(lessonId);
-    // Here you would navigate to the lesson detail screen
-    // setScreen("LessonDetail");
-  };
-
   const addCoins = (amount: number) => {
-    setCoins((prevCoins) => prevCoins + amount);
+    setCoins((prev) => prev + amount);
   };
-
-  const handleSelectLevelCard = (id: number, title: string) => {
-    setSelectedLevelCard({ id, title });
-  };
-
-  if (isLoading) {
-    return (
-      <View
-        style={[
-          styles.container,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <StatusBar
-          backgroundColor="#3C5BFF"
-          barStyle="light-content"
-          translucent={true}
-        />
-        <Animated.View
-          style={[
-            styles.loader,
-            {
-              transform: [{ scale: scaleAnim }, { rotate: spin }],
-            },
-          ]}
-        >
-          <View style={styles.spinnerOuter}>
-            <View style={styles.spinnerInner}>
-              <View style={styles.centerDot} />
-            </View>
-          </View>
-        </Animated.View>
-      </View>
-    );
-  }
 
   const renderScreen = () => {
     if (!isAuthenticated) {
       if (currentScreen === "SignUp") {
         return (
           <SignUpScreen
-            onLogin={() => handleScreenChange("Auth")}
             setIsAuthenticated={setIsAuthenticated}
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
+            onLogin={() => setCurrentScreen("Auth")}
           />
         );
       }
       return (
         <AuthScreen
-          onSignUp={() => handleScreenChange("SignUp")}
           setIsAuthenticated={setIsAuthenticated}
-          setScreen={handleScreenChange}
+          setScreen={setCurrentScreen}
+          onSignUp={() => setCurrentScreen("SignUp")}
         />
       );
     }
@@ -280,26 +145,26 @@ const App = () => {
         return (
           <HomeScreen
             setIsAuthenticated={setIsAuthenticated}
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
             onWordSelect={handleWordSelect}
             unreadNotificationsCount={
               notifications.filter((n) => !n.read).length
             }
           />
         );
-      case "Lessons":
+      case "MyLessons":
         return (
           <LessonsScreen
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
             onStartGame={handleStartGame}
           />
         );
-      case "CreateLesson":
-        return <CreateLessonScreen setScreen={handleScreenChange} />;
+      case "Courses":
+        return <CreateLessonScreen setScreen={setCurrentScreen} />;
       case "Dictionary":
         return (
           <DictionaryScreen
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
             selectedWord={selectedDictionaryWord}
             onWordSelect={handleWordSelect}
           />
@@ -307,7 +172,7 @@ const App = () => {
       case "Profile":
         return (
           <ProfileScreen
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
             setIsAuthenticated={setIsAuthenticated}
             isAdmin={isAdmin}
           />
@@ -315,22 +180,22 @@ const App = () => {
       case "Game":
         return currentLesson ? (
           <LessonGameScreen
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
             lesson={currentLesson}
           />
         ) : (
           <LessonsScreen
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
             onStartGame={handleStartGame}
           />
         );
       case "AdminPanel":
         return isAdmin ? (
-          <AdminPanelScreen setScreen={handleScreenChange} />
+          <AdminPanelScreen setScreen={setCurrentScreen} />
         ) : (
           <HomeScreen
             setIsAuthenticated={setIsAuthenticated}
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
             onWordSelect={handleWordSelect}
             unreadNotificationsCount={
               notifications.filter((n) => !n.read).length
@@ -340,7 +205,7 @@ const App = () => {
       case "Notifications":
         return (
           <NotificationsScreen
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
             notifications={notifications}
             markNotificationAsRead={markNotificationAsRead}
           />
@@ -348,10 +213,18 @@ const App = () => {
       case "SuggestedLessons":
         return (
           <SuggestedLessonsScreen
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
             cardId={selectedCardId}
             cardTitle="Beginner"
-            onStartLesson={handleStartLesson}
+            onStartLesson={(lessonId: number) => {
+              // Create a temporary lesson object for the selected lesson ID
+              const lesson: Lesson = {
+                id: lessonId.toString(),
+                name: "Lesson " + lessonId,
+                words: [],
+              };
+              handleStartGame(lesson);
+            }}
             addCoins={addCoins}
             coins={coins}
           />
@@ -360,7 +233,7 @@ const App = () => {
         return (
           <HomeScreen
             setIsAuthenticated={setIsAuthenticated}
-            setScreen={handleScreenChange}
+            setScreen={setCurrentScreen}
             onWordSelect={handleWordSelect}
             unreadNotificationsCount={
               notifications.filter((n) => !n.read).length
@@ -370,25 +243,32 @@ const App = () => {
     }
   };
 
-  const renderBottomNavigation = () => {
-    if (!isAuthenticated) return null;
-
+  if (!fontsLoaded || isLoading) {
     return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#3C5BFF" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <StatusBar
+        backgroundColor="#3C5BFF"
+        barStyle="light-content"
+        translucent={true}
+      />
+      <View style={styles.content}>{renderScreen()}</View>
       <View style={styles.bottomNavigation}>
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => handleScreenChange("Home")}
+          onPress={() => setCurrentScreen("Home")}
         >
-          <View style={styles.navIconContainer}>
-            <FontAwesome5
-              name="home"
-              size={22}
-              color={currentScreen === "Home" ? "#3C5BFF" : "#9E9E9E"}
-            />
-            {currentScreen === "Home" && (
-              <View style={styles.activeIndicator} />
-            )}
-          </View>
+          <FontAwesome5
+            name="home"
+            size={24}
+            color={currentScreen === "Home" ? "#3C5BFF" : "#9E9E9E"}
+          />
           <Text
             style={[
               styles.navText,
@@ -401,49 +281,51 @@ const App = () => {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => handleScreenChange("Lessons")}
+          onPress={() => setCurrentScreen("MyLessons")}
         >
-          <View style={styles.navIconContainer}>
-            <FontAwesome5
-              name="book-reader"
-              size={22}
-              color={currentScreen === "Lessons" ? "#3C5BFF" : "#9E9E9E"}
-            />
-            {currentScreen === "Lessons" && (
-              <View style={styles.activeIndicator} />
-            )}
-          </View>
+          <FontAwesome5
+            name="book"
+            size={24}
+            color={currentScreen === "MyLessons" ? "#3C5BFF" : "#9E9E9E"}
+          />
           <Text
             style={[
               styles.navText,
-              currentScreen === "Lessons" && styles.activeNavText,
+              currentScreen === "MyLessons" && styles.activeNavText,
             ]}
           >
             Darslarim
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
-          <View style={styles.navIconContainer}>
-            <FontAwesome5 name="graduation-cap" size={22} color="#9E9E9E" />
-          </View>
-          <Text style={styles.navText}>Kurslar</Text>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => setCurrentScreen("Courses")}
+        >
+          <FontAwesome5
+            name="graduation-cap"
+            size={24}
+            color={currentScreen === "Courses" ? "#3C5BFF" : "#9E9E9E"}
+          />
+          <Text
+            style={[
+              styles.navText,
+              currentScreen === "Courses" && styles.activeNavText,
+            ]}
+          >
+            Kurslar
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => handleScreenChange("Dictionary")}
+          onPress={() => setCurrentScreen("Dictionary")}
         >
-          <View style={styles.navIconContainer}>
-            <FontAwesome5
-              name="book"
-              size={22}
-              color={currentScreen === "Dictionary" ? "#3C5BFF" : "#9E9E9E"}
-            />
-            {currentScreen === "Dictionary" && (
-              <View style={styles.activeIndicator} />
-            )}
-          </View>
+          <FontAwesome5
+            name="book-open"
+            size={24}
+            color={currentScreen === "Dictionary" ? "#3C5BFF" : "#9E9E9E"}
+          />
           <Text
             style={[
               styles.navText,
@@ -456,18 +338,13 @@ const App = () => {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => handleScreenChange("Profile")}
+          onPress={() => setCurrentScreen("Profile")}
         >
-          <View style={styles.navIconContainer}>
-            <FontAwesome5
-              name="user"
-              size={22}
-              color={currentScreen === "Profile" ? "#3C5BFF" : "#9E9E9E"}
-            />
-            {currentScreen === "Profile" && (
-              <View style={styles.activeIndicator} />
-            )}
-          </View>
+          <FontAwesome5
+            name="user"
+            size={24}
+            color={currentScreen === "Profile" ? "#3C5BFF" : "#9E9E9E"}
+          />
           <Text
             style={[
               styles.navText,
@@ -478,43 +355,6 @@ const App = () => {
           </Text>
         </TouchableOpacity>
       </View>
-    );
-  };
-
-  return (
-    <View style={styles.container}>
-      <StatusBar
-        backgroundColor="#3C5BFF"
-        barStyle="light-content"
-        translucent={true}
-      />
-      {renderScreen()}
-      {renderBottomNavigation()}
-      {isLoading && (
-        <Animated.View
-          style={[
-            styles.loadingContainer,
-            {
-              opacity: fadeAnim,
-            },
-          ]}
-        >
-          <Animated.View
-            style={[
-              styles.loader,
-              {
-                transform: [{ scale: scaleAnim }, { rotate: spin }],
-              },
-            ]}
-          >
-            <View style={styles.spinnerOuter}>
-              <View style={styles.spinnerInner}>
-                <View style={styles.centerDot} />
-              </View>
-            </View>
-          </Animated.View>
-        </Animated.View>
-      )}
     </View>
   );
 };
@@ -522,102 +362,37 @@ const App = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
-  },
-  loadingContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
     backgroundColor: "#fff",
+  },
+  content: {
+    flex: 1,
+  },
+  centered: {
     justifyContent: "center",
     alignItems: "center",
-    elevation: 999,
-    zIndex: 999999,
-  },
-  loader: {
-    width: 150,
-    height: 150,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  spinnerOuter: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 75,
-    borderWidth: 6,
-    borderColor: "#3C5BFF",
-    borderTopColor: "#3C5BFF",
-    borderRightColor: "#3C5BFF",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  spinnerInner: {
-    width: "70%",
-    height: "70%",
-    borderRadius: 52.5,
-    borderWidth: 6,
-    borderColor: "#3C5BFF",
-    borderTopColor: "#3C5BFF",
-    borderRightColor: "#3C5BFF",
-    position: "relative",
-  },
-  centerDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#3C5BFF",
-    position: "absolute",
-    top: -13,
-    left: "50%",
-    marginLeft: -10,
   },
   bottomNavigation: {
     flexDirection: "row",
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-    paddingBottom: 20,
-    paddingTop: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    height: 70,
+    paddingBottom: 10,
+    paddingTop: 10,
   },
   navItem: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-  },
-  navIconContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
+    justifyContent: "space-between",
+    height: "100%",
   },
   navText: {
-    fontSize: 10,
+    fontSize: 12,
     color: "#9E9E9E",
-    marginTop: 4,
     fontFamily: "Lexend_400Regular",
   },
   activeNavText: {
     color: "#3C5BFF",
-    fontFamily: "Lexend_400Regular",
-  },
-  activeIndicator: {
-    position: "absolute",
-    bottom: -10,
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "#3C5BFF",
   },
 });
 

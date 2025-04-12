@@ -163,9 +163,9 @@ const HomeScreen: React.FC<Props> = ({
     setScreen("Notifications");
   };
 
-  const handleCardPress = (cardId: number) => {
+  const handleCardPress = (cardId: number, level: string) => {
     // Save selected card ID to App component state
-    console.log("Selected card:", cardId);
+    console.log("Selected card:", cardId, level);
     setScreen("SuggestedLessons");
   };
 
@@ -298,7 +298,7 @@ const HomeScreen: React.FC<Props> = ({
               {/* Beginner Card */}
               <TouchableOpacity
                 style={styles.levelCard}
-                onPress={() => handleCardPress(1)}
+                onPress={() => handleCardPress(1, "Beginner")}
               >
                 <View style={[styles.levelCircle]}>
                   <Text style={styles.levelNumber}>1</Text>
@@ -316,8 +316,8 @@ const HomeScreen: React.FC<Props> = ({
 
               {/* Intermediate Card */}
               <TouchableOpacity
-                style={[styles.levelCard, { marginHorizontal: 15 }]}
-                onPress={() => handleCardPress(2)}
+                style={[styles.levelCard]}
+                onPress={() => handleCardPress(2, "Intermediate")}
               >
                 <View style={[styles.levelCircle]}>
                   <Text style={styles.levelNumber}>2</Text>
@@ -334,7 +334,7 @@ const HomeScreen: React.FC<Props> = ({
               {/* Advanced Card */}
               <TouchableOpacity
                 style={[styles.levelCard]}
-                onPress={() => handleCardPress(3)}
+                onPress={() => handleCardPress(3, "Advanced")}
               >
                 <View style={[styles.levelCircle]}>
                   <Text style={styles.levelNumber}>3</Text>
@@ -434,42 +434,6 @@ const HomeScreen: React.FC<Props> = ({
         </Animated.ScrollView>
 
         {/* Bottom Navigation */}
-        <View style={styles.bottomNavigation}>
-          <TouchableOpacity style={styles.navItem}>
-            <View style={styles.navIconContainer}>
-              <FontAwesome5 name="home" size={22} color="#3C5BFF" />
-              <View style={styles.activeIndicator} />
-            </View>
-            <Text style={[styles.navText, styles.activeNavText]}>Asosiy</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => setScreen("Lessons")}
-          >
-            <View style={styles.navIconContainer}>
-              <FontAwesome5 name="book-reader" size={22} color="#9E9E9E" />
-            </View>
-            <Text style={styles.navText}>Darslarim</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navItem}>
-            <View style={styles.navIconContainer}>
-              <FontAwesome5 name="graduation-cap" size={22} color="#9E9E9E" />
-            </View>
-            <Text style={styles.navText}>Kurslar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => setScreen("Dictionary")}
-          >
-            <View style={styles.navIconContainer}>
-              <FontAwesome5 name="book" size={22} color="#9E9E9E" />
-            </View>
-            <Text style={styles.navText}>Lug'at</Text>
-          </TouchableOpacity>
-        </View>
 
         {/* Sliding Search Panel */}
         <Animated.View
@@ -737,8 +701,12 @@ const styles = StyleSheet.create({
     color: "#3C5BFF",
     fontFamily: "Lexend_400Regular",
   },
-  lessonCardsContainer: {
-    padding: 20,
+  levelCardsSection: {
+    paddingRight: 0,
+    paddingLeft: 20,
+    backgroundColor: "white",
+    marginBottom: 25,
+    width: "100%",
   },
   sectionTitle: {
     fontSize: 20,
@@ -746,19 +714,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: "#333",
   },
-  lessonCard: {
-    backgroundColor: "white",
+  levelCard: {
+    backgroundColor: "rgba(60, 91, 255, 0.1)",
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: 25,
+    width: 160,
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardContent: {
     flex: 1,
@@ -802,6 +765,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
     fontFamily: "Lexend_400Regular",
+    textAlign: "center",
   },
   scrollView: {
     flex: 1,
@@ -877,44 +841,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.5)",
   },
-  levelCardsSection: {
-    paddingRight: 0,
-    paddingLeft: 20,
-    backgroundColor: "white",
-    marginBottom: 25,
-  },
   cardsContainer: {
     paddingRight: 20,
-  },
-  levelCard: {
-    width: 150,
-    minHeight: 180,
-    backgroundColor: "#EEF1FF",
-    borderRadius: 15,
-    padding: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(60, 91, 255, 0.15)",
+    flexDirection: "row",
   },
   levelCircle: {
-    width: 45,
-    height: 45,
-    borderRadius: 23,
+    width: 55,
+    height: 55,
+    borderRadius: 28,
     backgroundColor: "#3C5BFF",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
   },
   levelNumber: {
-    fontSize: 18,
+    fontSize: 24,
     color: "white",
     fontFamily: "Lexend_400Regular",
+    textAlign: "center",
   },
   levelTitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#333",
     fontFamily: "Lexend_400Regular",
     marginBottom: 10,
+    textAlign: "center",
   },
   coursesSection: {
     paddingHorizontal: 20,
