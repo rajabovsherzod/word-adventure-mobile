@@ -37,6 +37,7 @@ interface GameState {
   selectedEnglishWord: string | null;
   selectedUzbekWord: string | null;
   arrangedLetters: string[];
+  selectedOption: string | null;
   stageProgress: {
     memorize: number;
     match: number;
@@ -82,29 +83,72 @@ const MemorizeStage = ({
   word,
   options,
   onSelect,
+  onNext,
+  selectedOption,
 }: {
   word: Word;
   options: string[];
   onSelect: (option: string) => void;
-}) => (
-  <View style={styles.gameContent}>
-    <Text style={styles.englishWord}>{word.english}</Text>
-    <View style={styles.optionsContainer}>
-      {options.map((option, index) => (
-        <TouchableOpacity
-          key={index}
+  onNext: () => void;
+  selectedOption: string | null;
+}) => {
+  const isCorrect = selectedOption === word.uzbek;
+
+  return (
+    <View style={styles.gameContent}>
+      <Text style={styles.englishWord}>{word.english}</Text>
+      <View style={styles.optionsContainer}>
+        {options.map((option, index) => {
+          const isSelected = selectedOption === option;
+          const isCorrectOption = option === word.uzbek;
+          const showCorrect = selectedOption && isCorrectOption;
+
+          return (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.optionButton,
+                index % 2 === 0 ? { marginRight: 10 } : {},
+                isSelected && !isCorrect && styles.wrongOption,
+                showCorrect && styles.correctOption,
+              ]}
+              onPress={() => !selectedOption && onSelect(option)}
+              disabled={selectedOption !== null}
+            >
+              <Text
+                style={[
+                  styles.optionText,
+                  isSelected && !isCorrect && styles.wrongOptionText,
+                  showCorrect && styles.correctOptionText,
+                ]}
+              >
+                {option}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <TouchableOpacity
+        style={[
+          styles.nextButton,
+          !selectedOption && styles.nextButtonDisabled,
+        ]}
+        onPress={onNext}
+        disabled={!selectedOption}
+      >
+        <Text
           style={[
-            styles.optionButton,
-            index % 2 === 0 ? { marginRight: 10 } : {},
+            styles.nextButtonText,
+            !selectedOption && styles.nextButtonTextDisabled,
           ]}
-          onPress={() => onSelect(option)}
         >
-          <Text style={styles.optionText}>{option}</Text>
-        </TouchableOpacity>
-      ))}
+          Keyingi
+        </Text>
+      </TouchableOpacity>
     </View>
-  </View>
-);
+  );
+};
 
 // Match Stage Component
 const MatchStage = ({
@@ -385,6 +429,7 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     selectedEnglishWord: null,
     selectedUzbekWord: null,
     arrangedLetters: [],
+    selectedOption: null,
     stageProgress: {
       memorize: 0,
       match: 0,
@@ -435,39 +480,43 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     const currentWord = availableWords[gameState.currentWordIndex];
     const isCorrect = selectedOption === currentWord.uzbek;
 
-    if (isCorrect) {
-      setGameState((prev) => {
-        const newState = {
-          ...prev,
-          score: prev.score + 1,
-          completedWords: [...prev.completedWords, currentWord.id],
-          stageProgress: {
-            ...prev.stageProgress,
-            memorize:
-              ((prev.currentWordIndex + 1) / availableWords.length) * 100,
-          },
-        };
+    setGameState((prev) => ({
+      ...prev,
+      selectedOption: selectedOption,
+      score: isCorrect ? prev.score + 1 : prev.score,
+    }));
+  };
 
-        if (prev.currentWordIndex < availableWords.length - 1) {
-          return {
-            ...newState,
-            currentWordIndex: prev.currentWordIndex + 1,
-          };
-        } else {
-          return {
-            ...newState,
-            currentStage: "stages",
-            currentWordIndex: 0,
-          };
-        }
-      });
-    } else {
-      setGameState((prev) => ({
+  const handleNext = () => {
+    const availableWords = words.slice(0, MAX_WORDS_PER_LESSON);
+
+    setGameState((prev) => {
+      const newState = {
         ...prev,
-        mistakes: prev.mistakes + 1,
-      }));
-      Alert.alert("Xato!", "Qayta urinib ko'ring");
-    }
+        selectedOption: null,
+        completedWords: [
+          ...prev.completedWords,
+          availableWords[prev.currentWordIndex].id,
+        ],
+        stageProgress: {
+          ...prev.stageProgress,
+          memorize: ((prev.currentWordIndex + 1) / availableWords.length) * 100,
+        },
+      };
+
+      if (prev.currentWordIndex < availableWords.length - 1) {
+        return {
+          ...newState,
+          currentWordIndex: prev.currentWordIndex + 1,
+        };
+      } else {
+        return {
+          ...newState,
+          currentStage: "stages",
+          currentWordIndex: 0,
+        };
+      }
+    });
   };
 
   const handleMatchStage = (english: string, uzbek: string) => {
@@ -787,6 +836,8 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
             word={currentWord}
             options={shuffledOptions}
             onSelect={handleOptionSelect}
+            onNext={handleNext}
+            selectedOption={gameState.selectedOption}
           />
         ) : null;
       case "match":
@@ -1073,14 +1124,28 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 12,
     marginBottom: 10,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#E0E0E0",
+  },
+  wrongOption: {
+    backgroundColor: "#FF4D4D",
+    borderColor: "#FF0000",
+  },
+  correctOption: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#45A049",
   },
   optionText: {
     fontSize: 16,
     color: "#333",
     textAlign: "center",
     fontFamily: "Lexend_400Regular",
+  },
+  wrongOptionText: {
+    color: "white",
+  },
+  correctOptionText: {
+    color: "white",
   },
   matchContainer: {
     flexDirection: "row",
@@ -1245,6 +1310,25 @@ const styles = StyleSheet.create({
   },
   wrongLetterText: {
     color: "white",
+  },
+  nextButton: {
+    backgroundColor: "#3C5BFF",
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 30,
+  },
+  nextButtonDisabled: {
+    backgroundColor: "#E0E0E0",
+  },
+  nextButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontFamily: "Lexend_400Regular",
+    textAlign: "center",
+  },
+  nextButtonTextDisabled: {
+    color: "#999",
   },
 });
 
