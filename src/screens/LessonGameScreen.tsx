@@ -94,39 +94,64 @@ const MemorizeStage = ({
 }) => {
   const isCorrect = selectedOption === word.uzbek;
 
+  const getOptionStyle = (option: string) => {
+    const isSelected = selectedOption === option;
+    const isCorrectOption = option === word.uzbek;
+    const showCorrect = selectedOption && isCorrectOption;
+
+    const baseStyle = [
+      styles.optionButton,
+      { backgroundColor: "#F5F5F5", borderColor: "#E0E0E0" },
+    ];
+
+    if (isSelected && !isCorrect) {
+      return [
+        ...baseStyle,
+        { backgroundColor: "#FF4D4D", borderColor: "#FF0000" },
+      ];
+    }
+    if (showCorrect) {
+      return [
+        ...baseStyle,
+        { backgroundColor: "#4CAF50", borderColor: "#45A049" },
+      ];
+    }
+    return baseStyle;
+  };
+
+  const getTextStyle = (option: string) => {
+    const isSelected = selectedOption === option;
+    const isCorrectOption = option === word.uzbek;
+    const showCorrect = selectedOption && isCorrectOption;
+
+    const baseStyle = [styles.optionText, { color: "#333" }];
+
+    if (isSelected && !isCorrect) {
+      return [...baseStyle, { color: "white" }];
+    }
+    if (showCorrect) {
+      return [...baseStyle, { color: "white" }];
+    }
+    return baseStyle;
+  };
+
   return (
     <View style={styles.gameContent}>
       <Text style={styles.englishWord}>{word.english}</Text>
       <View style={styles.optionsContainer}>
-        {options.map((option, index) => {
-          const isSelected = selectedOption === option;
-          const isCorrectOption = option === word.uzbek;
-          const showCorrect = selectedOption && isCorrectOption;
-
-          return (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.optionButton,
-                index % 2 === 0 ? { marginRight: 10 } : {},
-                isSelected && !isCorrect && styles.wrongOption,
-                showCorrect && styles.correctOption,
-              ]}
-              onPress={() => !selectedOption && onSelect(option)}
-              disabled={selectedOption !== null}
-            >
-              <Text
-                style={[
-                  styles.optionText,
-                  isSelected && !isCorrect && styles.wrongOptionText,
-                  showCorrect && styles.correctOptionText,
-                ]}
-              >
-                {option}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {options.map((option, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              ...getOptionStyle(option),
+              index % 2 === 0 ? { marginRight: 10 } : {},
+            ]}
+            onPress={() => !selectedOption && onSelect(option)}
+            disabled={selectedOption !== null}
+          >
+            <Text style={getTextStyle(option)}>{option}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <TouchableOpacity
@@ -171,6 +196,25 @@ const MatchStage = ({
   onMismatch: () => void;
 }) => {
   const [isWrongMatch, setIsWrongMatch] = useState(false);
+  const [shuffledEnglishWords, setShuffledEnglishWords] = useState<string[]>(
+    []
+  );
+  const [shuffledUzbekWords, setShuffledUzbekWords] = useState<string[]>([]);
+
+  // So'zlarni faqat bir marta, komponent birinchi marta yuklanganda aralashtirish
+  useEffect(() => {
+    if (shuffledEnglishWords.length === 0 && shuffledUzbekWords.length === 0) {
+      const englishWords = words
+        .map((w) => w.english)
+        .sort(() => Math.random() - 0.5);
+      const uzbekWords = words
+        .map((w) => w.uzbek)
+        .sort(() => Math.random() - 0.5);
+
+      setShuffledEnglishWords(englishWords);
+      setShuffledUzbekWords(uzbekWords);
+    }
+  }, []); // Bo'sh dependency array - faqat bir marta ishlaydi
 
   useEffect(() => {
     if (selectedEnglish && selectedUzbek) {
@@ -192,75 +236,69 @@ const MatchStage = ({
     <View style={styles.gameContent}>
       <View style={styles.matchContainer}>
         <View style={styles.englishWords}>
-          {words.map((word) => (
+          {shuffledEnglishWords.map((english) => (
             <TouchableOpacity
-              key={word.english}
+              key={english}
               style={[
                 styles.matchWord,
-                selectedEnglish === word.english &&
+                selectedEnglish === english &&
                   !isWrongMatch &&
                   styles.selectedWord,
-                matchedPairs.some((pair) => pair.english === word.english) &&
+                matchedPairs.some((pair) => pair.english === english) &&
                   styles.matchedWord,
               ]}
               onPress={() =>
-                !matchedPairs.some((pair) => pair.english === word.english) &&
-                onSelectEnglish(word.english)
+                !matchedPairs.some((pair) => pair.english === english) &&
+                onSelectEnglish(english)
               }
-              disabled={matchedPairs.some(
-                (pair) => pair.english === word.english
-              )}
+              disabled={matchedPairs.some((pair) => pair.english === english)}
             >
               <Text
                 style={[
                   styles.matchWordText,
-                  selectedEnglish === word.english &&
+                  selectedEnglish === english &&
                     !isWrongMatch &&
                     styles.selectedWordText,
-                  matchedPairs.some((pair) => pair.english === word.english) &&
+                  matchedPairs.some((pair) => pair.english === english) &&
                     styles.matchedWordText,
                 ]}
               >
-                {word.english}
+                {english}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
         <View style={styles.uzbekWords}>
-          {words.map((word) => (
+          {shuffledUzbekWords.map((uzbek) => (
             <TouchableOpacity
-              key={word.uzbek}
+              key={uzbek}
               style={[
                 styles.matchWord,
-                selectedUzbek === word.uzbek &&
-                  !isWrongMatch &&
-                  styles.selectedWord,
-                matchedPairs.some((pair) => pair.uzbek === word.uzbek) &&
+                selectedUzbek === uzbek && !isWrongMatch && styles.selectedWord,
+                matchedPairs.some((pair) => pair.uzbek === uzbek) &&
                   styles.matchedWord,
-                isWrongMatch &&
-                  selectedUzbek === word.uzbek &&
-                  styles.mismatchWord,
+                isWrongMatch && selectedUzbek === uzbek && styles.mismatchWord,
               ]}
               onPress={() =>
-                !matchedPairs.some((pair) => pair.uzbek === word.uzbek) &&
-                onSelectUzbek(word.uzbek)
+                !matchedPairs.some((pair) => pair.uzbek === uzbek) &&
+                onSelectUzbek(uzbek)
               }
-              disabled={matchedPairs.some((pair) => pair.uzbek === word.uzbek)}
+              disabled={matchedPairs.some((pair) => pair.uzbek === uzbek)}
             >
               <Text
                 style={[
                   styles.matchWordText,
-                  selectedUzbek === word.uzbek &&
+                  selectedUzbek === uzbek &&
                     !isWrongMatch &&
                     styles.selectedWordText,
-                  matchedPairs.some((pair) => pair.uzbek === word.uzbek) &&
+                  matchedPairs.some((pair) => pair.uzbek === uzbek) &&
                     styles.matchedWordText,
                   isWrongMatch &&
-                    selectedUzbek === word.uzbek &&
+                    selectedUzbek === uzbek &&
                     styles.mismatchWordText,
                 ]}
               >
-                {word.uzbek}
+                {uzbek}
               </Text>
             </TouchableOpacity>
           ))}
