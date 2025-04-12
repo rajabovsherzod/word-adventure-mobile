@@ -34,6 +34,7 @@ type Props = {
   setScreen: (screen: string) => void;
   onWordSelect: (word: Word) => void;
   unreadNotificationsCount: number;
+  onCardSelect: (cardId: number, level: string) => void;
 };
 
 const HomeScreen: React.FC<Props> = ({
@@ -41,6 +42,7 @@ const HomeScreen: React.FC<Props> = ({
   setScreen,
   onWordSelect,
   unreadNotificationsCount,
+  onCardSelect,
 }) => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -164,9 +166,7 @@ const HomeScreen: React.FC<Props> = ({
   };
 
   const handleCardPress = (cardId: number, level: string) => {
-    // Save selected card ID to App component state
-    console.log("Selected card:", cardId, level);
-    setScreen("SuggestedLessons");
+    onCardSelect(cardId, level);
   };
 
   const renderSearchResult = ({ item }: { item: Word }) => (

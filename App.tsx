@@ -23,7 +23,7 @@ import AdminPanelScreen from "./src/screens/AdminPanelScreen";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
 import SuggestedLessonsScreen from "./src/screens/SuggestedLessonsScreen";
 
-import { Word, getWordById } from "./src/data/words";
+import { Word, getWordById, getWordsByCardAndLesson } from "./src/data/words";
 import { checkAuth } from "./src/services/api";
 
 type Lesson = {
@@ -58,6 +58,7 @@ const App = () => {
   const [coins, setCoins] = useState<number>(100);
   const [selectedDictionaryWord, setSelectedDictionaryWord] =
     useState<Word | null>(null);
+  const [selectedCardTitle, setSelectedCardTitle] = useState<string>("");
 
   const [fontsLoaded] = useFonts({
     Lexend_400Regular,
@@ -120,6 +121,24 @@ const App = () => {
     setCoins((prev) => prev + amount);
   };
 
+  const handleCardSelect = (cardId: number, level: string) => {
+    setSelectedCardId(cardId);
+    setSelectedCardTitle(level);
+    setCurrentScreen("SuggestedLessons");
+  };
+
+  const handleStartLesson = (lessonId: number) => {
+    setSelectedLessonId(lessonId);
+    // Get words for this lesson from words.ts
+    const lessonWords = getWordsByCardAndLesson(selectedCardId, lessonId);
+    setCurrentLesson({
+      id: `${selectedCardId}-${lessonId}`,
+      name: `${selectedCardTitle} - Dars ${lessonId}`,
+      words: lessonWords,
+    });
+    setCurrentScreen("Game");
+  };
+
   const renderScreen = () => {
     if (!isAuthenticated) {
       if (currentScreen === "SignUp") {
@@ -150,6 +169,7 @@ const App = () => {
             unreadNotificationsCount={
               notifications.filter((n) => !n.read).length
             }
+            onCardSelect={handleCardSelect}
           />
         );
       case "MyLessons":
@@ -184,9 +204,14 @@ const App = () => {
             lesson={currentLesson}
           />
         ) : (
-          <LessonsScreen
+          <HomeScreen
+            setIsAuthenticated={setIsAuthenticated}
             setScreen={setCurrentScreen}
-            onStartGame={handleStartGame}
+            onWordSelect={handleWordSelect}
+            unreadNotificationsCount={
+              notifications.filter((n) => !n.read).length
+            }
+            onCardSelect={handleCardSelect}
           />
         );
       case "AdminPanel":
@@ -200,6 +225,7 @@ const App = () => {
             unreadNotificationsCount={
               notifications.filter((n) => !n.read).length
             }
+            onCardSelect={handleCardSelect}
           />
         );
       case "Notifications":
@@ -215,17 +241,8 @@ const App = () => {
           <SuggestedLessonsScreen
             setScreen={setCurrentScreen}
             cardId={selectedCardId}
-            cardTitle="Beginner"
-            onStartLesson={(lessonId: number) => {
-              // Create a temporary lesson object for the selected lesson ID
-              const lesson: Lesson = {
-                id: lessonId.toString(),
-                name: "Lesson " + lessonId,
-                words: [],
-              };
-              handleStartGame(lesson);
-            }}
-            addCoins={addCoins}
+            cardTitle={selectedCardTitle}
+            onStartLesson={handleStartLesson}
             coins={coins}
           />
         );
@@ -238,6 +255,7 @@ const App = () => {
             unreadNotificationsCount={
               notifications.filter((n) => !n.read).length
             }
+            onCardSelect={handleCardSelect}
           />
         );
     }

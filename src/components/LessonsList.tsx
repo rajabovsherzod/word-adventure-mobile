@@ -8,19 +8,24 @@ import {
 } from "react-native";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 
+interface LessonWord {
+  word: string;
+  translation: string;
+}
+
 interface LessonsListProps {
   level: string;
   cardId: number;
   title: string;
   currentLesson: number;
-  onLessonPress: (lessonId: number) => void;
+  onLessonPress: (lessonId: number, words: LessonWord[]) => void;
 }
 
 interface LessonCardProps {
   lessonId: number;
   isLocked: boolean;
   progress: number;
-  wordsCount: number;
+  words: LessonWord[];
   onPress: () => void;
 }
 
@@ -33,7 +38,7 @@ const LessonStages = ({ currentStage = 1 }) => {
             <FontAwesome5
               name="book-reader"
               size={14}
-              color="#6B4EFF"
+              color="#3C5BFF"
               style={styles.stageIcon}
             />
           </View>
@@ -52,7 +57,7 @@ const LessonStages = ({ currentStage = 1 }) => {
             <FontAwesome5
               name="sync"
               size={14}
-              color="#6B4EFF"
+              color="#3C5BFF"
               style={styles.stageIcon}
             />
           </View>
@@ -71,7 +76,7 @@ const LessonStages = ({ currentStage = 1 }) => {
             <FontAwesome5
               name="check-circle"
               size={14}
-              color="#6B4EFF"
+              color="#3C5BFF"
               style={styles.stageIcon}
             />
           </View>
@@ -90,7 +95,7 @@ const LessonStages = ({ currentStage = 1 }) => {
             <FontAwesome5
               name="pencil-alt"
               size={14}
-              color="#6B4EFF"
+              color="#3C5BFF"
               style={styles.stageIcon}
             />
           </View>
@@ -105,7 +110,7 @@ const LessonCard: React.FC<LessonCardProps> = ({
   lessonId,
   isLocked,
   progress,
-  wordsCount,
+  words,
   onPress,
 }) => {
   const currentStage = Math.floor((progress / 100) * 4) + 1;
@@ -141,12 +146,6 @@ const LessonCard: React.FC<LessonCardProps> = ({
 
       <LessonStages currentStage={currentStage} />
 
-      <Text style={styles.wordsTitle}>O'rganiladigan so'zlar</Text>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${progress}%` }]} />
-      </View>
-      <Text style={styles.wordsCount}>{wordsCount}/10</Text>
-
       {isLocked && (
         <View style={styles.lockOverlay}>
           <FontAwesome5 name="lock" size={20} color="#3C5BFF" />
@@ -163,6 +162,26 @@ const LessonsList: React.FC<LessonsListProps> = ({
   currentLesson,
   onLessonPress,
 }) => {
+  // Test uchun so'zlar
+  const lessonsWords: { [key: number]: LessonWord[] } = {
+    1: [
+      { word: "hello", translation: "salom" },
+      { word: "world", translation: "dunyo" },
+      { word: "book", translation: "kitob" },
+      { word: "pen", translation: "ruchka" },
+      { word: "school", translation: "maktab" },
+      { word: "teacher", translation: "o'qituvchi" },
+      { word: "student", translation: "o'quvchi" },
+      { word: "friend", translation: "do'st" },
+      { word: "family", translation: "oila" },
+    ],
+    2: [
+      { word: "computer", translation: "kompyuter" },
+      { word: "phone", translation: "telefon" },
+      { word: "table", translation: "stol" },
+    ],
+  };
+
   const lessons = Array.from({ length: 5 }, (_, i) => i + 1);
 
   return (
@@ -176,8 +195,8 @@ const LessonsList: React.FC<LessonsListProps> = ({
           progress={
             lessonId < currentLesson ? 100 : lessonId === currentLesson ? 0 : 0
           }
-          wordsCount={lessonId < currentLesson ? 10 : 0}
-          onPress={() => onLessonPress(lessonId)}
+          words={lessonsWords[lessonId] || []}
+          onPress={() => onLessonPress(lessonId, lessonsWords[lessonId] || [])}
         />
       ))}
     </ScrollView>
@@ -287,7 +306,6 @@ const styles = StyleSheet.create({
   },
   stageIcon: {
     opacity: 1,
-    color: "#3C5BFF",
   },
   stageNumber: {
     fontSize: 12,
@@ -308,31 +326,6 @@ const styles = StyleSheet.create({
   },
   stageLineInactive: {
     backgroundColor: "#E5E9FF",
-  },
-  wordsTitle: {
-    fontSize: 14,
-    color: "#000000",
-    fontFamily: "Lexend_400Regular",
-    marginBottom: 8,
-    fontWeight: "500",
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: "#EEF1FF",
-    borderRadius: 4,
-    marginBottom: 6,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#3C5BFF",
-    borderRadius: 4,
-  },
-  wordsCount: {
-    fontSize: 12,
-    color: "#000000",
-    fontFamily: "Lexend_400Regular",
-    fontWeight: "500",
   },
   lockOverlay: {
     position: "absolute",
