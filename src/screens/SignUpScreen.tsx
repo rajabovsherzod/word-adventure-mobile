@@ -8,6 +8,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
 } from "react-native";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";

@@ -261,7 +261,17 @@ const App = () => {
     }
   };
 
-  if (!fontsLoaded || isLoading) {
+  const shouldShowBottomNav = () => {
+    return (
+      isAuthenticated && currentScreen !== "Auth" && currentScreen !== "SignUp"
+    );
+  };
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  if (isLoading) {
     return (
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#3C5BFF" />
@@ -271,108 +281,106 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        backgroundColor="#3C5BFF"
-        barStyle="light-content"
-        translucent={true}
-      />
+      <StatusBar backgroundColor="#3C5BFF" barStyle="light-content" />
       <View style={styles.content}>{renderScreen()}</View>
-      <View style={styles.bottomNavigation}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => setCurrentScreen("Home")}
-        >
-          <FontAwesome5
-            name="home"
-            size={24}
-            color={currentScreen === "Home" ? "#3C5BFF" : "#9E9E9E"}
-          />
-          <Text
-            style={[
-              styles.navText,
-              currentScreen === "Home" && styles.activeNavText,
-            ]}
+      {shouldShowBottomNav() && (
+        <View style={styles.bottomNavigation}>
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setCurrentScreen("Home")}
           >
-            Asosiy
-          </Text>
-        </TouchableOpacity>
+            <FontAwesome5
+              name="home"
+              size={24}
+              color={currentScreen === "Home" ? "#3C5BFF" : "#9E9E9E"}
+            />
+            <Text
+              style={[
+                styles.navText,
+                currentScreen === "Home" && styles.activeNavText,
+              ]}
+            >
+              Asosiy
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => setCurrentScreen("MyLessons")}
-        >
-          <FontAwesome5
-            name="book"
-            size={24}
-            color={currentScreen === "MyLessons" ? "#3C5BFF" : "#9E9E9E"}
-          />
-          <Text
-            style={[
-              styles.navText,
-              currentScreen === "MyLessons" && styles.activeNavText,
-            ]}
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setCurrentScreen("MyLessons")}
           >
-            Darslarim
-          </Text>
-        </TouchableOpacity>
+            <FontAwesome5
+              name="book"
+              size={24}
+              color={currentScreen === "MyLessons" ? "#3C5BFF" : "#9E9E9E"}
+            />
+            <Text
+              style={[
+                styles.navText,
+                currentScreen === "MyLessons" && styles.activeNavText,
+              ]}
+            >
+              Darslarim
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => setCurrentScreen("Courses")}
-        >
-          <FontAwesome5
-            name="graduation-cap"
-            size={24}
-            color={currentScreen === "Courses" ? "#3C5BFF" : "#9E9E9E"}
-          />
-          <Text
-            style={[
-              styles.navText,
-              currentScreen === "Courses" && styles.activeNavText,
-            ]}
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setCurrentScreen("Courses")}
           >
-            Kurslar
-          </Text>
-        </TouchableOpacity>
+            <FontAwesome5
+              name="graduation-cap"
+              size={24}
+              color={currentScreen === "Courses" ? "#3C5BFF" : "#9E9E9E"}
+            />
+            <Text
+              style={[
+                styles.navText,
+                currentScreen === "Courses" && styles.activeNavText,
+              ]}
+            >
+              Kurslar
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => setCurrentScreen("Dictionary")}
-        >
-          <FontAwesome5
-            name="book-open"
-            size={24}
-            color={currentScreen === "Dictionary" ? "#3C5BFF" : "#9E9E9E"}
-          />
-          <Text
-            style={[
-              styles.navText,
-              currentScreen === "Dictionary" && styles.activeNavText,
-            ]}
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setCurrentScreen("Dictionary")}
           >
-            Lug'at
-          </Text>
-        </TouchableOpacity>
+            <FontAwesome5
+              name="book-open"
+              size={24}
+              color={currentScreen === "Dictionary" ? "#3C5BFF" : "#9E9E9E"}
+            />
+            <Text
+              style={[
+                styles.navText,
+                currentScreen === "Dictionary" && styles.activeNavText,
+              ]}
+            >
+              Lug'at
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => setCurrentScreen("Profile")}
-        >
-          <FontAwesome5
-            name="user"
-            size={24}
-            color={currentScreen === "Profile" ? "#3C5BFF" : "#9E9E9E"}
-          />
-          <Text
-            style={[
-              styles.navText,
-              currentScreen === "Profile" && styles.activeNavText,
-            ]}
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setCurrentScreen("Profile")}
           >
-            Profil
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <FontAwesome5
+              name="user"
+              size={24}
+              color={currentScreen === "Profile" ? "#3C5BFF" : "#9E9E9E"}
+            />
+            <Text
+              style={[
+                styles.navText,
+                currentScreen === "Profile" && styles.activeNavText,
+              ]}
+            >
+              Profil
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };

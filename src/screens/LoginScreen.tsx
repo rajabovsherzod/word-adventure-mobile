@@ -59,7 +59,7 @@ const LoginScreen: React.FC<Props> = ({ setScreen, setIsAuthenticated }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safeAreaView}>
       <StatusBar backgroundColor="#3C5BFF" barStyle="light-content" />
 
       <View style={styles.header}>
@@ -136,6 +136,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F5",
+  },
+  safeAreaView: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+    paddingBottom: 0,
   },
   header: {
     backgroundColor: "white",

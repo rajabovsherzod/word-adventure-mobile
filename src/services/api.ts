@@ -3,14 +3,18 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 // IP manzilini qurilma turiga qarab tanlash
-let BASE_URL = "http://10.0.2.2:3000/api"; // Android emulyator uchun default
+let BASE_URL = "http://10.0.2.2:5000/api"; // Android emulyator uchun
 
 if (Platform.OS === "ios") {
-  BASE_URL = "http://localhost:3000/api"; // iOS simulyatori uchun
+  BASE_URL = "http://localhost:5000/api"; // iOS simulyatori uchun
+} else if (!__DEV__) {
+  // Production muhitda
+  BASE_URL = "https://your-production-api.com/api";
+} else {
+  // Development muhitda fizik qurilma uchun
+  const LOCAL_IP = "192.168.1.13"; // Bizning local IP manzilimiz
+  BASE_URL = `http://${LOCAL_IP}:5000/api`;
 }
-
-// MUHIM: Bu qatorni izohga olish kerak, chunki fizik qurilma manzili override qiladi
-// BASE_URL = "http://172.20.10.5:3000/api"; // Fizik qurilma uchun
 
 console.log("API using URL:", BASE_URL);
 
@@ -19,18 +23,26 @@ export const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 30000, // 30 sekund
+  timeout: 10000, // 10 sekund
 });
 
-// Request interceptor
+// Request interceptor - so'rovlarni kuzatish
 api.interceptors.request.use(
   async (config) => {
-    console.log("API Request:", config.method?.toUpperCase(), config.url);
-    const token = await AsyncStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      console.log("API Request:", config.method?.toUpperCase(), config.url);
+      console.log("API Request URL:", config.baseURL + config.url);
+      console.log("API Request Body:", config.data);
+
+      const token = await AsyncStorage.getItem("token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    } catch (error) {
+      console.error("API Request Interceptor Error:", error);
+      return Promise.reject(error);
     }
-    return config;
   },
   (error) => {
     console.error("API Request Error:", error);
@@ -38,16 +50,27 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor - javoblarni kuzatish
 api.interceptors.response.use(
   (response) => {
-    console.log("API Response:", response.status, response.config.url);
+    console.log("API Response Status:", response.status);
+    console.log("API Response Data:", response.data);
     return response;
   },
   (error) => {
-    console.error("API Response Error:", error.message);
-    if (error.code === "ECONNABORTED") {
-      console.error("API Timeout Error");
+    if (error.response) {
+      // Server qaytargan xatolik
+      console.error("API Error Response:", {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers,
+      });
+    } else if (error.request) {
+      // So'rov yuborildi, lekin javob kelmadi
+      console.error("API No Response:", error.request);
+    } else {
+      // So'rov yuborishda xatolik
+      console.error("API Error:", error.message);
     }
     return Promise.reject(error);
   }
