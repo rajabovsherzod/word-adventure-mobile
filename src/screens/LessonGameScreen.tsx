@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
+import progressService from "../services/progressService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STATUSBAR_HEIGHT =
   Platform.OS === "ios" ? 44 : StatusBar.currentHeight || 0;
@@ -490,6 +492,32 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
   const words = lesson.words.length > 0 ? lesson.words : MOCK_WORDS;
 
   useEffect(() => {
+    const initialize = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
+          console.log("Token topilmadi, Auth ekraniga yo'naltirilmoqda");
+          setScreen("Auth");
+          return;
+        }
+
+        console.log("Dars progressini boshlash: ", {
+          lessonId: lesson.id,
+          words: lesson.words
+            .slice(0, MAX_WORDS_PER_LESSON)
+            .map((w) => w.english),
+        });
+
+        await initializeProgress();
+      } catch (error) {
+        console.error("Dars progressini boshlashda xatolik:", error);
+      }
+    };
+
+    initialize();
+  }, []);
+
+  useEffect(() => {
     if (gameState.currentStage === "memorize") {
       generateOptions();
     }
@@ -507,6 +535,60 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
       () => Math.random() - 0.5
     );
     setShuffledOptions(options);
+  };
+
+  const initializeProgress = async () => {
+    try {
+      if (!lesson || !lesson.id || !lesson.words) {
+        console.error("Dars ma'lumotlari to'liq emas:", lesson);
+        return;
+      }
+
+      const words = lesson.words
+        .slice(0, MAX_WORDS_PER_LESSON)
+        .map((w) => w.english);
+
+      console.log("Progress ma'lumotlarini yuborish:", {
+        lessonId: lesson.id,
+        words: words,
+      });
+
+      const response = await progressService.initializeLessonProgress(
+        lesson.id,
+        words
+      );
+      console.log("Progress ma'lumotlari yuborildi:", response);
+
+      const lessonProgress = response.lessons.find(
+        (l) => l.lessonId === lesson.id
+      );
+      if (lessonProgress) {
+        setGameState((prev) => ({
+          ...prev,
+          stageProgress: {
+            memorize:
+              (lessonProgress.stages.memorize.completedWords.length /
+                MAX_WORDS_PER_LESSON) *
+              100,
+            match: lessonProgress.stages.match.progress,
+            arrange:
+              (lessonProgress.stages.arrange.completedWords.length /
+                MAX_WORDS_PER_LESSON) *
+              100,
+            write:
+              (lessonProgress.stages.write.completedWords.length /
+                MAX_WORDS_PER_LESSON) *
+              100,
+          },
+        }));
+      }
+    } catch (error) {
+      console.error("Dars progressini boshlashda xatolik:", error);
+      if (error.response) {
+        console.error("Server xatoligi:", error.response.data);
+      }
+      throw error;
+    }
   };
 
   const handleStageSelect = (stage: GameStage) => {
@@ -534,6 +616,9 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
 
   const handleNext = () => {
     const availableWords = words.slice(0, MAX_WORDS_PER_LESSON);
+    const currentWord = availableWords[gameState.currentWordIndex];
+
+    updateProgress("memorize", currentWord.english);
 
     setGameState((prev) => {
       const newState = {
@@ -543,10 +628,6 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
           ...prev.completedWords,
           availableWords[prev.currentWordIndex].id,
         ],
-        stageProgress: {
-          ...prev.stageProgress,
-          memorize: ((prev.currentWordIndex + 1) / availableWords.length) * 100,
-        },
       };
 
       if (prev.currentWordIndex < availableWords.length - 1) {
@@ -570,13 +651,13 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     );
 
     if (isCorrect) {
+      updateProgress("match", english);
+
       setGameState((prev) => {
         const newMatchedPairs = [...prev.matchedPairs, { english, uzbek }];
         const availableWords = words.slice(0, MAX_WORDS_PER_LESSON);
-        const progress = (newMatchedPairs.length / availableWords.length) * 100;
 
         if (newMatchedPairs.length === availableWords.length) {
-          // Oxirgi juftlik to'g'ri tanlanganda 1 soniya kutib tursin
           setTimeout(() => {
             setGameState((prevState) => ({
               ...prevState,
@@ -584,23 +665,8 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
               selectedEnglishWord: null,
               selectedUzbekWord: null,
               currentStage: "stages",
-              stageProgress: {
-                ...prevState.stageProgress,
-                match: 100,
-              },
             }));
           }, 1000);
-
-          return {
-            ...prev,
-            matchedPairs: newMatchedPairs,
-            selectedEnglishWord: null,
-            selectedUzbekWord: null,
-            stageProgress: {
-              ...prev.stageProgress,
-              match: 100,
-            },
-          };
         }
 
         return {
@@ -608,10 +674,6 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
           matchedPairs: newMatchedPairs,
           selectedEnglishWord: null,
           selectedUzbekWord: null,
-          stageProgress: {
-            ...prev.stageProgress,
-            match: progress,
-          },
         };
       });
     } else {
@@ -634,7 +696,8 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
       const newArrangedLetters = [...gameState.arrangedLetters, letter];
 
       if (newArrangedLetters.length === currentWord.english.length) {
-        // So'z to'liq yig'ildi - 1 soniya kutib tursin
+        updateProgress("arrange", currentWord.english);
+
         setGameState((prev) => ({
           ...prev,
           arrangedLetters: newArrangedLetters,
@@ -645,32 +708,21 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
           const availableWords = words.slice(0, MAX_WORDS_PER_LESSON);
 
           if (nextIndex < availableWords.length) {
-            // Keyingi so'zga o'tish
             setGameState((prev) => ({
               ...prev,
               currentWordIndex: nextIndex,
               arrangedLetters: [],
-              stageProgress: {
-                ...prev.stageProgress,
-                arrange: (nextIndex / availableWords.length) * 100,
-              },
             }));
           } else {
-            // Bosqich yakunlandi
             setGameState((prev) => ({
               ...prev,
               currentStage: "stages",
               currentWordIndex: 0,
               arrangedLetters: [],
-              stageProgress: {
-                ...prev.stageProgress,
-                arrange: 100,
-              },
             }));
           }
         }, 1000);
       } else {
-        // Harf qo'shish
         setGameState((prev) => ({
           ...prev,
           arrangedLetters: newArrangedLetters,
@@ -680,15 +732,12 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
   };
 
   const handleCorrectAnswer = () => {
+    const currentWord = words[gameState.currentWordIndex];
+    updateProgress("write", currentWord.english);
+
     setGameState((prev) => {
       const availableWords = words.slice(0, MAX_WORDS_PER_LESSON);
-      const newState = {
-        ...prev,
-        stageProgress: {
-          ...prev.stageProgress,
-          write: ((prev.currentWordIndex + 1) / availableWords.length) * 100,
-        },
-      };
+      const newState = { ...prev };
 
       if (prev.currentWordIndex < availableWords.length - 1) {
         return {
@@ -733,6 +782,53 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
         mistakes: newMistakes,
       };
     });
+  };
+
+  const updateProgress = async (stage: string, completedWord: string) => {
+    try {
+      console.log("Bosqich progressini yangilash:", {
+        lessonId: lesson.id,
+        stage,
+        completedWord,
+      });
+
+      const response = await progressService.updateStageProgress(
+        lesson.id,
+        stage,
+        completedWord
+      );
+
+      console.log("Progress yangilandi:", response);
+
+      const lessonProgress = response.lessons.find(
+        (l) => l.lessonId === lesson.id
+      );
+      if (lessonProgress) {
+        setGameState((prev) => ({
+          ...prev,
+          stageProgress: {
+            memorize:
+              (lessonProgress.stages.memorize.completedWords.length /
+                MAX_WORDS_PER_LESSON) *
+              100,
+            match: lessonProgress.stages.match.progress,
+            arrange:
+              (lessonProgress.stages.arrange.completedWords.length /
+                MAX_WORDS_PER_LESSON) *
+              100,
+            write:
+              (lessonProgress.stages.write.completedWords.length /
+                MAX_WORDS_PER_LESSON) *
+              100,
+          },
+        }));
+      }
+    } catch (error) {
+      console.error("Bosqich progressini yangilashda xatolik:", error);
+      if (error.response) {
+        console.error("Server xatoligi:", error.response.data);
+      }
+    }
   };
 
   const renderStages = () => {

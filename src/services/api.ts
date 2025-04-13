@@ -195,3 +195,63 @@ export const deleteUser = async (id: string) => {
   const response = await api.delete(`/users/${id}`);
   return response.data;
 };
+
+// Progress endpoints
+export const getUserProgress = async () => {
+  try {
+    console.log("API: Progress ma'lumotlarini olish so'rovi yuborilmoqda");
+    const response = await api.get("/progress");
+    console.log("API: Progress ma'lumotlari olindi:", response.data);
+    return response;
+  } catch (error) {
+    console.error("API: Progress ma'lumotlarini olishda xatolik:", error);
+    throw error;
+  }
+};
+
+export const initializeLessonProgress = async (
+  lessonId: string,
+  words: string[]
+) => {
+  try {
+    console.log("API: Dars progressini boshlash so'rovi yuborilmoqda");
+    console.log("API: Dars ID:", lessonId);
+    console.log("API: So'zlar:", words);
+
+    const response = await api.post("/progress/initialize-lesson", {
+      lessonId,
+      words,
+    });
+
+    console.log("API: Dars progressi boshlandi:", response.data);
+    return response;
+  } catch (error) {
+    console.error("API: Dars progressini boshlashda xatolik:", error);
+    throw error;
+  }
+};
+
+export const updateStageProgress = async (
+  lessonId: string,
+  stage: string,
+  completedWord: string
+) => {
+  try {
+    console.log("API: Bosqich progressini yangilash so'rovi yuborilmoqda");
+    console.log("API: Dars ID:", lessonId);
+    console.log("API: Bosqich:", stage);
+    console.log("API: Tugatilgan so'z:", completedWord);
+
+    const response = await api.patch("/progress/update-stage", {
+      lessonId,
+      stage,
+      completedWord,
+    });
+
+    console.log("API: Bosqich progressi yangilandi:", response.data);
+    return response;
+  } catch (error) {
+    console.error("API: Bosqich progressini yangilashda xatolik:", error);
+    throw error;
+  }
+};
