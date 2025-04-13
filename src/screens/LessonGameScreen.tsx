@@ -201,7 +201,6 @@ const MatchStage = ({
   );
   const [shuffledUzbekWords, setShuffledUzbekWords] = useState<string[]>([]);
 
-  // So'zlarni faqat bir marta, komponent birinchi marta yuklanganda aralashtirish
   useEffect(() => {
     if (shuffledEnglishWords.length === 0 && shuffledUzbekWords.length === 0) {
       const englishWords = words
@@ -214,7 +213,7 @@ const MatchStage = ({
       setShuffledEnglishWords(englishWords);
       setShuffledUzbekWords(uzbekWords);
     }
-  }, []); // Bo'sh dependency array - faqat bir marta ishlaydi
+  }, []);
 
   useEffect(() => {
     if (selectedEnglish && selectedUzbek) {
@@ -227,6 +226,8 @@ const MatchStage = ({
         onMismatch();
         setTimeout(() => {
           setIsWrongMatch(false);
+          onSelectEnglish(null);
+          onSelectUzbek(null);
         }, 1000);
       }
     }
@@ -246,6 +247,9 @@ const MatchStage = ({
                   styles.selectedWord,
                 matchedPairs.some((pair) => pair.english === english) &&
                   styles.matchedWord,
+                isWrongMatch &&
+                  selectedEnglish === english &&
+                  styles.mismatchWord,
               ]}
               onPress={() =>
                 !matchedPairs.some((pair) => pair.english === english) &&
@@ -261,6 +265,9 @@ const MatchStage = ({
                     styles.selectedWordText,
                   matchedPairs.some((pair) => pair.english === english) &&
                     styles.matchedWordText,
+                  isWrongMatch &&
+                    selectedEnglish === english &&
+                    styles.mismatchWordText,
                 ]}
               >
                 {english}
@@ -1227,24 +1234,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
+  selectedWord: {
+    backgroundColor: "#3C5BFF",
+    borderColor: "#3C5BFF",
+  },
+  matchedWord: {
+    backgroundColor: "#28a745",
+    borderColor: "#28a745",
+  },
+  mismatchWord: {
+    backgroundColor: "#FF1744",
+    borderColor: "#FF1744",
+  },
   matchWordText: {
     fontSize: 14,
     color: "#333",
     textAlign: "center",
     fontFamily: "Lexend_400Regular",
   },
-  selectedWord: {
-    backgroundColor: "#3C5BFF",
-    borderColor: "#3C5BFF",
-  },
   selectedWordText: {
     color: "white",
   },
-  matchedWord: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
-  },
   matchedWordText: {
+    color: "white",
+  },
+  mismatchWordText: {
     color: "white",
   },
   arrangeContainer: {
@@ -1331,13 +1345,6 @@ const styles = StyleSheet.create({
   },
   mistakeIndicatorActive: {
     backgroundColor: "#FF5252",
-  },
-  mismatchWord: {
-    backgroundColor: "#FF5252",
-    borderColor: "#FF5252",
-  },
-  mismatchWordText: {
-    color: "white",
   },
   resetButton: {
     padding: 10,
