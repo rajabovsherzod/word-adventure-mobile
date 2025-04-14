@@ -2,28 +2,44 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
-// IP manzilini qurilma turiga qarab tanlash
-let BASE_URL = "http://10.0.2.2:5000/api"; // Android emulyator uchun
+// Base URL for API
+let BASE_URL = "";
 
-if (Platform.OS === "ios") {
-  BASE_URL = "http://localhost:5000/api"; // iOS simulyatori uchun
-} else if (!__DEV__) {
-  // Production muhitda
-  BASE_URL = "https://your-production-api.com/api";
+// IP manzili - kompyuteringizning haqiqiy IP manzili
+const SERVER_IP = "172.20.10.5";
+
+// Set axios defaults
+if (Platform.OS === "android") {
+  if (__DEV__) {
+    // Fizik qurilma uchun
+    BASE_URL = `http://${SERVER_IP}:3000/api`;
+  } else {
+    // Production muhitda
+    BASE_URL = "https://word-adventure-api.com/api";
+  }
+} else if (Platform.OS === "ios") {
+  if (__DEV__) {
+    // iOS simulyator uchun
+    BASE_URL = "http://localhost:3000/api";
+  } else {
+    // Production muhitda
+    BASE_URL = "https://word-adventure-api.com/api";
+  }
 } else {
-  // Development muhitda fizik qurilma uchun
-  const LOCAL_IP = "192.168.1.13"; // Bizning local IP manzilimiz
-  BASE_URL = `http://${LOCAL_IP}:5000/api`;
+  // Qolgan qurilmalar uchun
+  BASE_URL = `http://${SERVER_IP}:3000/api`;
 }
 
 console.log("API using URL:", BASE_URL);
+console.log("Platform:", Platform.OS, "DEV mode:", __DEV__);
+console.log("Using server IP:", SERVER_IP);
 
 export const api = axios.create({
   baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000, // 10 sekund
+  timeout: 30000, // 30 sekund (oshirilgan timeout)
 });
 
 // Request interceptor - so'rovlarni kuzatish
@@ -37,6 +53,7 @@ api.interceptors.request.use(
       const token = await AsyncStorage.getItem("token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        console.log("API Request Token:", token);
       }
       return config;
     } catch (error) {
@@ -57,7 +74,7 @@ api.interceptors.response.use(
     console.log("API Response Data:", response.data);
     return response;
   },
-  (error) => {
+  async (error) => {
     if (error.response) {
       // Server qaytargan xatolik
       console.error("API Error Response:", {
@@ -68,6 +85,12 @@ api.interceptors.response.use(
     } else if (error.request) {
       // So'rov yuborildi, lekin javob kelmadi
       console.error("API No Response:", error.request);
+      console.error("API Error - Network Issue. Check server connection.");
+
+      // Timeout bo'lgan bo'lsa
+      if (error.code === "ECONNABORTED") {
+        console.error("API Request Timeout - Server not responding");
+      }
     } else {
       // So'rov yuborishda xatolik
       console.error("API Error:", error.message);
@@ -199,12 +222,22 @@ export const deleteUser = async (id: string) => {
 // Progress endpoints
 export const getUserProgress = async () => {
   try {
-    console.log("API: Progress ma'lumotlarini olish so'rovi yuborilmoqda");
-    const response = await api.get("/progress");
-    console.log("API: Progress ma'lumotlari olindi:", response.data);
-    return response;
+    console.log("API: Getting user progress");
+    const response = await api.get(`/progress`);
+    console.log("API: Got user progress:", response.data);
+
+    // Check if response has proper format
+    if (!response.data || !response.data.data) {
+      console.error("API: Invalid response format:", response.data);
+      throw new Error("Invalid response format for user progress");
+    }
+
+    return response.data;
   } catch (error) {
-    console.error("API: Progress ma'lumotlarini olishda xatolik:", error);
+    console.error("API: Error getting user progress:", error);
+    if (error instanceof Error) {
+      console.error("API: Error message:", error.message);
+    }
     throw error;
   }
 };
@@ -214,19 +247,52 @@ export const initializeLessonProgress = async (
   words: string[]
 ) => {
   try {
-    console.log("API: Dars progressini boshlash so'rovi yuborilmoqda");
-    console.log("API: Dars ID:", lessonId);
-    console.log("API: So'zlar:", words);
+    if (!lessonId) {
+      console.error("API: Error - Lesson ID is required");
+      throw new Error("Lesson ID is required");
+    }
+
+    if (!Array.isArray(words) || words.length === 0) {
+      console.error("API: Error - Words array is required and cannot be empty");
+      throw new Error("Words array is required and cannot be empty");
+    }
+
+    console.log("API: Initializing lesson progress with details:", {
+      lessonId,
+      words,
+      wordCount: words.length,
+    });
+
+    // Get token for logs
+    const token = await AsyncStorage.getItem("token");
+    console.log(
+      "API: Using token for initialization (first 10 chars):",
+      token ? token.substring(0, 10) + "..." : "No token"
+    );
 
     const response = await api.post("/progress/initialize-lesson", {
-      lessonId,
+      lessonId: lessonId.toString(),
       words,
     });
 
-    console.log("API: Dars progressi boshlandi:", response.data);
-    return response;
+    if (!response.data || !response.data.success) {
+      console.error(
+        "API: Server responded but success flag is false:",
+        response.data
+      );
+      throw new Error("Server failed to initialize lesson progress");
+    }
+
+    console.log("API: Lesson progress initialized successfully");
+    return response.data.data.lessons;
   } catch (error) {
-    console.error("API: Dars progressini boshlashda xatolik:", error);
+    console.error("API: Error initializing lesson progress:", error);
+    if (error instanceof Error) {
+      console.error("API: Error message:", error.message);
+    }
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("API: Server error details:", error.response.data);
+    }
     throw error;
   }
 };
@@ -234,24 +300,54 @@ export const initializeLessonProgress = async (
 export const updateStageProgress = async (
   lessonId: string,
   stage: string,
-  completedWord: string
+  word: string,
+  isCorrect: boolean,
+  words: string[]
 ) => {
   try {
-    console.log("API: Bosqich progressini yangilash so'rovi yuborilmoqda");
-    console.log("API: Dars ID:", lessonId);
-    console.log("API: Bosqich:", stage);
-    console.log("API: Tugatilgan so'z:", completedWord);
+    if (!lessonId) {
+      throw new Error("Lesson ID is required");
+    }
 
-    const response = await api.patch("/progress/update-stage", {
+    if (!stage) {
+      throw new Error("Stage is required");
+    }
+
+    if (!word) {
+      throw new Error("Word is required");
+    }
+
+    if (typeof isCorrect !== "boolean") {
+      throw new Error("isCorrect must be a boolean");
+    }
+
+    if (!Array.isArray(words) || words.length === 0) {
+      throw new Error("Words array is required and cannot be empty");
+    }
+
+    console.log("API: Updating stage progress with full details:", {
       lessonId,
       stage,
-      completedWord,
+      word,
+      isCorrect,
+      words,
     });
 
-    console.log("API: Bosqich progressi yangilandi:", response.data);
-    return response;
+    const response = await api.patch(`/progress/update-stage`, {
+      lessonId,
+      stage,
+      completedWord: word,
+      isCorrect,
+      words,
+    });
+
+    console.log("API: Stage progress updated:", response.data);
+    return response.data.data.lessons;
   } catch (error) {
-    console.error("API: Bosqich progressini yangilashda xatolik:", error);
+    console.error("API: Error updating stage progress:", error);
+    if (error instanceof Error) {
+      console.error("API: Error message:", error.message);
+    }
     throw error;
   }
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -41,10 +41,25 @@ interface GameState {
   arrangedLetters: string[];
   selectedOption: string | null;
   stageProgress: {
-    memorize: number;
-    match: number;
-    arrange: number;
-    write: number;
+    memorize: {
+      completed: boolean;
+      completedWords: string[];
+      remainingWords: string[];
+    };
+    match: {
+      completed: boolean;
+      progress: number;
+    };
+    arrange: {
+      completed: boolean;
+      completedWords: string[];
+      remainingWords: string[];
+    };
+    write: {
+      completed: boolean;
+      completedWords: string[];
+      remainingWords: string[];
+    };
   };
 }
 
@@ -478,10 +493,25 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     arrangedLetters: [],
     selectedOption: null,
     stageProgress: {
-      memorize: 0,
-      match: 0,
-      arrange: 0,
-      write: 0,
+      memorize: {
+        completed: false,
+        completedWords: [],
+        remainingWords: [],
+      },
+      match: {
+        completed: false,
+        progress: 0,
+      },
+      arrange: {
+        completed: false,
+        completedWords: [],
+        remainingWords: [],
+      },
+      write: {
+        completed: false,
+        completedWords: [],
+        remainingWords: [],
+      },
     },
   });
 
@@ -508,7 +538,11 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
             .map((w) => w.english),
         });
 
+        // Initialize progress
         await initializeProgress();
+
+        // Get progress and update UI
+        await updateProgressUI();
       } catch (error) {
         console.error("Dars progressini boshlashda xatolik:", error);
       }
@@ -516,6 +550,105 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
 
     initialize();
   }, []);
+
+  // UI ni progress ma'lumotlari bilan yangilash
+  const updateProgressUI = async () => {
+    try {
+      console.log("Updating progress UI");
+      const progressData = await progressService.getUserProgress();
+      console.log("Got progress data:", progressData);
+
+      if (!progressData || !Array.isArray(progressData)) {
+        console.error("Invalid progress data:", progressData);
+        return;
+      }
+
+      // Joriy dars uchun progress ma'lumotlarini topish
+      const lessonProgress = progressData.find((p) => p.lessonId === lesson.id);
+      console.log("Lesson progress:", lessonProgress);
+
+      if (lessonProgress && lessonProgress.stages) {
+        // Progress ma'lumotlari bilan UI ni yangilash
+        setGameState((prev) => {
+          const memorizeWords =
+            lessonProgress.stages.memorize?.completedWords || [];
+          const matchProgress = lessonProgress.stages.match?.progress || 0;
+          const arrangeWords =
+            lessonProgress.stages.arrange?.completedWords || [];
+          const writeWords = lessonProgress.stages.write?.completedWords || [];
+
+          console.log("Memorize completed words:", memorizeWords);
+          console.log("Match progress:", matchProgress);
+          console.log("Arrange completed words:", arrangeWords);
+          console.log("Write completed words:", writeWords);
+
+          return {
+            ...prev,
+            stageProgress: {
+              memorize: {
+                completed: lessonProgress.stages.memorize?.completed || false,
+                completedWords: memorizeWords,
+                remainingWords:
+                  lessonProgress.stages.memorize?.remainingWords || [],
+              },
+              match: {
+                completed: lessonProgress.stages.match?.completed || false,
+                progress: matchProgress,
+              },
+              arrange: {
+                completed: lessonProgress.stages.arrange?.completed || false,
+                completedWords: arrangeWords,
+                remainingWords:
+                  lessonProgress.stages.arrange?.remainingWords || [],
+              },
+              write: {
+                completed: lessonProgress.stages.write?.completed || false,
+                completedWords: writeWords,
+                remainingWords:
+                  lessonProgress.stages.write?.remainingWords || [],
+              },
+            },
+          };
+        });
+      }
+    } catch (error) {
+      console.error("Error updating progress UI:", error);
+    }
+  };
+
+  // Update progress when a word is completed
+  const updateProgress = async (
+    stage: string,
+    word: string,
+    isCorrect: boolean
+  ) => {
+    try {
+      if (!lesson || !lesson.id || !lesson.words) {
+        console.error("Cannot update progress: lesson data is invalid");
+        return;
+      }
+
+      // Convert Word objects to string array based on Word type definition
+      const wordStrings = lesson.words.map((word) => word.english);
+
+      console.log(
+        `Updating progress - Stage: ${stage}, Word: ${word}, Correct: ${isCorrect}`
+      );
+      await progressService.updateProgress(
+        lesson.id,
+        stage,
+        word,
+        isCorrect,
+        wordStrings
+      );
+      console.log("Progress updated successfully");
+
+      // Update UI after progress update
+      await updateProgressUI();
+    } catch (error) {
+      console.error("Error updating progress:", error);
+    }
+  };
 
   useEffect(() => {
     if (gameState.currentStage === "memorize") {
@@ -539,57 +672,67 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
 
   const initializeProgress = async () => {
     try {
-      if (!lesson || !lesson.id || !lesson.words) {
-        console.error("Dars ma'lumotlari to'liq emas:", lesson);
+      console.log("Initializing progress for lesson:", lesson?.id);
+
+      // Extract words from lesson correctly
+      if (!lesson || !lesson.words || !Array.isArray(lesson.words)) {
+        console.error("No words found in lesson or invalid format", lesson);
         return;
       }
 
-      const words = lesson.words
-        .slice(0, MAX_WORDS_PER_LESSON)
-        .map((w) => w.english);
+      // Convert Word objects to string array based on Word type definition in this file
+      const wordStrings = lesson.words.map((word) => word.english);
+      console.log("Words for progress:", wordStrings);
 
-      console.log("Progress ma'lumotlarini yuborish:", {
-        lessonId: lesson.id,
-        words: words,
-      });
-
-      const response = await progressService.initializeLessonProgress(
-        lesson.id,
-        words
-      );
-      console.log("Progress ma'lumotlari yuborildi:", response);
-
-      const lessonProgress = response.lessons.find(
-        (l) => l.lessonId === lesson.id
-      );
-      if (lessonProgress) {
-        setGameState((prev) => ({
-          ...prev,
-          stageProgress: {
-            memorize:
-              (lessonProgress.stages.memorize.completedWords.length /
-                MAX_WORDS_PER_LESSON) *
-              100,
-            match: lessonProgress.stages.match.progress,
-            arrange:
-              (lessonProgress.stages.arrange.completedWords.length /
-                MAX_WORDS_PER_LESSON) *
-              100,
-            write:
-              (lessonProgress.stages.write.completedWords.length /
-                MAX_WORDS_PER_LESSON) *
-              100,
-          },
-        }));
+      if (wordStrings.length === 0) {
+        console.error("No words found in lesson");
+        return;
       }
+
+      // Initialize progress
+      await progressService.initializeProgress(lesson.id, wordStrings);
+      console.log("Progress initialized successfully");
     } catch (error) {
-      console.error("Dars progressini boshlashda xatolik:", error);
-      if (error.response) {
-        console.error("Server xatoligi:", error.response.data);
-      }
-      throw error;
+      console.error("Error initializing progress:", error);
     }
   };
+
+  const checkAuthAndInitialize = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const userStr = await AsyncStorage.getItem("user");
+
+      if (!token || !userStr) {
+        console.log("User not logged in, cannot initialize progress");
+        setScreen("Auth");
+        return;
+      }
+
+      await initializeProgress();
+    } catch (error) {
+      console.error("Error checking auth and initializing progress:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (lesson && lesson.id) {
+      console.log("Lesson loaded, initializing progress:", lesson.id);
+      checkAuthAndInitialize();
+    }
+  }, [lesson]);
+
+  useEffect(() => {
+    if (
+      gameState.currentStage === "memorize" &&
+      gameState.currentWordIndex >= words.length
+    ) {
+      // User completed all words in Memorize, update progress for all words
+      words.forEach((word) => {
+        updateProgress("memorize", word.english, true);
+      });
+      handleStageSelect("match");
+    }
+  }, [gameState.currentStage, gameState.currentWordIndex, words]);
 
   const handleStageSelect = (stage: GameStage) => {
     setGameState((prev) => ({
@@ -607,6 +750,11 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     const currentWord = availableWords[gameState.currentWordIndex];
     const isCorrect = selectedOption === currentWord.uzbek;
 
+    // O'rganilgan so'zni progress tizimiga saqlash
+    if (isCorrect) {
+      updateProgress("memorize", currentWord.english, true);
+    }
+
     setGameState((prev) => ({
       ...prev,
       selectedOption: selectedOption,
@@ -617,8 +765,6 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
   const handleNext = () => {
     const availableWords = words.slice(0, MAX_WORDS_PER_LESSON);
     const currentWord = availableWords[gameState.currentWordIndex];
-
-    updateProgress("memorize", currentWord.english);
 
     setGameState((prev) => {
       const newState = {
@@ -651,7 +797,7 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     );
 
     if (isCorrect) {
-      updateProgress("match", english);
+      updateProgress("match", english, true);
 
       setGameState((prev) => {
         const newMatchedPairs = [...prev.matchedPairs, { english, uzbek }];
@@ -665,6 +811,14 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
               selectedEnglishWord: null,
               selectedUzbekWord: null,
               currentStage: "stages",
+              stageProgress: {
+                ...prevState.stageProgress,
+                match: {
+                  ...prevState.stageProgress.match,
+                  completed: true,
+                  progress: 100,
+                },
+              },
             }));
           }, 1000);
         }
@@ -696,7 +850,8 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
       const newArrangedLetters = [...gameState.arrangedLetters, letter];
 
       if (newArrangedLetters.length === currentWord.english.length) {
-        updateProgress("arrange", currentWord.english);
+        // So'z to'g'ri tertiblanganda progressni saqlash
+        updateProgress("arrange", currentWord.english, true);
 
         setGameState((prev) => ({
           ...prev,
@@ -719,6 +874,13 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
               currentStage: "stages",
               currentWordIndex: 0,
               arrangedLetters: [],
+              stageProgress: {
+                ...prev.stageProgress,
+                arrange: {
+                  ...prev.stageProgress.arrange,
+                  completed: true,
+                },
+              },
             }));
           }
         }, 1000);
@@ -733,7 +895,9 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
 
   const handleCorrectAnswer = () => {
     const currentWord = words[gameState.currentWordIndex];
-    updateProgress("write", currentWord.english);
+
+    // To'g'ri yozilganda progressni saqlash
+    updateProgress("write", currentWord.english, true);
 
     setGameState((prev) => {
       const availableWords = words.slice(0, MAX_WORDS_PER_LESSON);
@@ -751,6 +915,13 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
           currentStage: "stages",
           currentWordIndex: 0,
           mistakes: 0,
+          stageProgress: {
+            ...prev.stageProgress,
+            write: {
+              ...prev.stageProgress.write,
+              completed: true,
+            },
+          },
         };
       }
     });
@@ -784,53 +955,6 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     });
   };
 
-  const updateProgress = async (stage: string, completedWord: string) => {
-    try {
-      console.log("Bosqich progressini yangilash:", {
-        lessonId: lesson.id,
-        stage,
-        completedWord,
-      });
-
-      const response = await progressService.updateStageProgress(
-        lesson.id,
-        stage,
-        completedWord
-      );
-
-      console.log("Progress yangilandi:", response);
-
-      const lessonProgress = response.lessons.find(
-        (l) => l.lessonId === lesson.id
-      );
-      if (lessonProgress) {
-        setGameState((prev) => ({
-          ...prev,
-          stageProgress: {
-            memorize:
-              (lessonProgress.stages.memorize.completedWords.length /
-                MAX_WORDS_PER_LESSON) *
-              100,
-            match: lessonProgress.stages.match.progress,
-            arrange:
-              (lessonProgress.stages.arrange.completedWords.length /
-                MAX_WORDS_PER_LESSON) *
-              100,
-            write:
-              (lessonProgress.stages.write.completedWords.length /
-                MAX_WORDS_PER_LESSON) *
-              100,
-          },
-        }));
-      }
-    } catch (error) {
-      console.error("Bosqich progressini yangilashda xatolik:", error);
-      if (error.response) {
-        console.error("Server xatoligi:", error.response.data);
-      }
-    }
-  };
-
   const renderStages = () => {
     const availableWords = words.slice(0, MAX_WORDS_PER_LESSON);
     const totalWords = availableWords.length;
@@ -850,14 +974,12 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
                 <Text style={styles.stageName}>So'zlarni yodlash</Text>
               </View>
               <View style={styles.stageScore}>
-                {gameState.stageProgress.memorize === 100 ? (
+                {gameState.stageProgress.memorize.completed ? (
                   <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
                 ) : (
                   <Text style={styles.stageScoreText}>
-                    {Math.round(
-                      (gameState.stageProgress.memorize * totalWords) / 100
-                    )}
-                    /{totalWords}
+                    {gameState.stageProgress.memorize.completedWords.length}/
+                    {totalWords}
                   </Text>
                 )}
               </View>
@@ -876,14 +998,12 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
                 <Text style={styles.stageName}>So'zlarni takrorlash</Text>
               </View>
               <View style={styles.stageScore}>
-                {gameState.stageProgress.match === 100 ? (
+                {gameState.stageProgress.match.completed ? (
                   <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
                 ) : (
                   <Text style={styles.stageScoreText}>
-                    {Math.round(
-                      (gameState.stageProgress.match * totalWords) / 100
-                    )}
-                    /{totalWords}
+                    {Math.floor(gameState.stageProgress.match.progress / 10)}/
+                    {totalWords}
                   </Text>
                 )}
               </View>
@@ -906,14 +1026,12 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
                 <Text style={styles.stageName}>So'zlarni mustahkamlash</Text>
               </View>
               <View style={styles.stageScore}>
-                {gameState.stageProgress.arrange === 100 ? (
+                {gameState.stageProgress.arrange.completed ? (
                   <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
                 ) : (
                   <Text style={styles.stageScoreText}>
-                    {Math.round(
-                      (gameState.stageProgress.arrange * totalWords) / 100
-                    )}
-                    /{totalWords}
+                    {gameState.stageProgress.arrange.completedWords.length}/
+                    {totalWords}
                   </Text>
                 )}
               </View>
@@ -932,14 +1050,12 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
                 <Text style={styles.stageName}>So'zlarni yozish</Text>
               </View>
               <View style={styles.stageScore}>
-                {gameState.stageProgress.write === 100 ? (
+                {gameState.stageProgress.write.completed ? (
                   <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
                 ) : (
                   <Text style={styles.stageScoreText}>
-                    {Math.round(
-                      (gameState.stageProgress.write * totalWords) / 100
-                    )}
-                    /{totalWords}
+                    {gameState.stageProgress.write.completedWords.length}/
+                    {totalWords}
                   </Text>
                 )}
               </View>
@@ -1049,10 +1165,19 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
 
   const progress =
     gameState.currentStage === "stages"
-      ? Object.values(gameState.stageProgress).reduce((a, b) => a + b, 0) / 4
-      : ((gameState.currentWordIndex + 1) /
-          Math.min(words.length, MAX_WORDS_PER_LESSON)) *
-        100;
+      ? Math.floor(
+          ((gameState.stageProgress.memorize.completedWords.length +
+            Math.floor(gameState.stageProgress.match.progress / 10) +
+            gameState.stageProgress.arrange.completedWords.length +
+            gameState.stageProgress.write.completedWords.length) /
+            (MAX_WORDS_PER_LESSON * 4)) *
+            100
+        )
+      : Math.floor(
+          ((gameState.currentWordIndex + 1) /
+            Math.min(words.length, MAX_WORDS_PER_LESSON)) *
+            100
+        );
 
   return (
     <View style={styles.container}>
@@ -1075,7 +1200,7 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
         <View style={styles.scoreContainer}>
           <Text style={styles.scoreText}>
             {gameState.currentStage === "stages"
-              ? `${Math.round(progress)}%`
+              ? `${progress}%`
               : `${gameState.currentWordIndex + 1}/${Math.min(
                   words.length,
                   MAX_WORDS_PER_LESSON
