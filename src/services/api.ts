@@ -226,10 +226,10 @@ export const getUserProgress = async () => {
     const response = await api.get(`/progress`);
     console.log("API: Got user progress:", response.data);
 
-    // Check if response has proper format
-    if (!response.data || !response.data.data) {
-      console.error("API: Invalid response format:", response.data);
-      throw new Error("Invalid response format for user progress");
+    // Javob bo'sh bo'lmasin
+    if (!response.data) {
+      console.error("API: Empty response from server");
+      throw new Error("Empty response from server");
     }
 
     return response.data;
@@ -275,16 +275,28 @@ export const initializeLessonProgress = async (
       words,
     });
 
-    if (!response.data || !response.data.success) {
+    console.log("API: Lesson progress initialized successfully");
+
+    // Response.data.data.lessons bo'lmasa ham xatolik qaytarmaslik
+    if (response.data && response.data.success) {
+      if (response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data;
+      } else if (
+        response.data.data &&
+        Array.isArray(response.data.data.lessons)
+      ) {
+        return response.data.data.lessons;
+      } else {
+        console.log("API: Unexpected success response format:", response.data);
+        return [];
+      }
+    } else {
       console.error(
-        "API: Server responded but success flag is false:",
+        "API: Server error or unsuccessful response:",
         response.data
       );
-      throw new Error("Server failed to initialize lesson progress");
+      return [];
     }
-
-    console.log("API: Lesson progress initialized successfully");
-    return response.data.data.lessons;
   } catch (error) {
     console.error("API: Error initializing lesson progress:", error);
     if (error instanceof Error) {
@@ -300,7 +312,7 @@ export const initializeLessonProgress = async (
 export const updateStageProgress = async (
   lessonId: string,
   stage: string,
-  word: string,
+  completedWord: string,
   isCorrect: boolean,
   words: string[]
 ) => {
@@ -313,7 +325,7 @@ export const updateStageProgress = async (
       throw new Error("Stage is required");
     }
 
-    if (!word) {
+    if (!completedWord) {
       throw new Error("Word is required");
     }
 
@@ -328,7 +340,7 @@ export const updateStageProgress = async (
     console.log("API: Updating stage progress with full details:", {
       lessonId,
       stage,
-      word,
+      completedWord,
       isCorrect,
       words,
     });
@@ -336,13 +348,33 @@ export const updateStageProgress = async (
     const response = await api.patch(`/progress/update-stage`, {
       lessonId,
       stage,
-      completedWord: word,
+      completedWord,
       isCorrect,
       words,
     });
 
     console.log("API: Stage progress updated:", response.data);
-    return response.data.data.lessons;
+
+    // Response.data.data.lessons bo'lmasa ham xatolik qaytarmaslik
+    if (response.data && response.data.success) {
+      if (response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data;
+      } else if (
+        response.data.data &&
+        Array.isArray(response.data.data.lessons)
+      ) {
+        return response.data.data.lessons;
+      } else {
+        console.log("API: Unexpected success response format:", response.data);
+        return [];
+      }
+    } else {
+      console.error(
+        "API: Server error or unsuccessful response:",
+        response.data
+      );
+      return [];
+    }
   } catch (error) {
     console.error("API: Error updating stage progress:", error);
     if (error instanceof Error) {

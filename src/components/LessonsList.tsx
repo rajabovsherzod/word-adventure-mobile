@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   ScrollView,
 } from "react-native";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
+import { getUserProgress } from "../services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface LessonWord {
   word: string;
@@ -27,75 +29,140 @@ interface LessonCardProps {
   progress: number;
   words: LessonWord[];
   onPress: () => void;
+  stageStatus?: StageStatus;
 }
 
-const LessonStages = ({ currentStage = 1 }) => {
+// Stage status interface
+interface StageStatus {
+  memorize: boolean;
+  match: boolean;
+  arrange: boolean;
+  write: boolean;
+}
+
+const LessonStages = ({
+  currentStage = 1,
+  stageStatus,
+}: {
+  currentStage?: number;
+  stageStatus?: StageStatus;
+}) => {
+  // Default stages if no status provided
+  const completedStages = stageStatus || {
+    memorize: false,
+    match: false,
+    arrange: false,
+    write: false,
+  };
+
+  // Har bir bosqich statusi uchun consolega chiqarish
+  console.log("Stage Status in LessonStages:", completedStages);
+
   return (
     <View style={styles.stagesContainer}>
+      {/* Stage 1 - Memorize */}
       <View style={styles.stageItem}>
         <View style={styles.stageIconWrapper}>
-          <View style={styles.stageIconContainer}>
+          <View
+            style={[
+              styles.stageIconContainer,
+              completedStages.memorize && styles.completedStageIcon,
+            ]}
+          >
             <FontAwesome5
               name="book-reader"
               size={14}
-              color="#3C5BFF"
+              color={completedStages.memorize ? "#FFFFFF" : "#3C5BFF"}
               style={styles.stageIcon}
             />
           </View>
           <Text style={styles.stageNumber}>1</Text>
         </View>
       </View>
+
+      {/* Line between Stage 1 and 2 */}
       <View
         style={[
           styles.stageLine,
-          currentStage > 1 ? styles.stageLineActive : styles.stageLineInactive,
+          completedStages.memorize
+            ? styles.stageLineActive
+            : styles.stageLineInactive,
         ]}
       />
+
+      {/* Stage 2 - Match */}
       <View style={styles.stageItem}>
         <View style={styles.stageIconWrapper}>
-          <View style={styles.stageIconContainer}>
+          <View
+            style={[
+              styles.stageIconContainer,
+              completedStages.match && styles.completedStageIcon,
+            ]}
+          >
             <FontAwesome5
               name="sync"
               size={14}
-              color="#3C5BFF"
+              color={completedStages.match ? "#FFFFFF" : "#3C5BFF"}
               style={styles.stageIcon}
             />
           </View>
           <Text style={styles.stageNumber}>2</Text>
         </View>
       </View>
+
+      {/* Line between Stage 2 and 3 */}
       <View
         style={[
           styles.stageLine,
-          currentStage > 2 ? styles.stageLineActive : styles.stageLineInactive,
+          completedStages.match
+            ? styles.stageLineActive
+            : styles.stageLineInactive,
         ]}
       />
+
+      {/* Stage 3 - Arrange */}
       <View style={styles.stageItem}>
         <View style={styles.stageIconWrapper}>
-          <View style={styles.stageIconContainer}>
+          <View
+            style={[
+              styles.stageIconContainer,
+              completedStages.arrange && styles.completedStageIcon,
+            ]}
+          >
             <FontAwesome5
               name="check-circle"
               size={14}
-              color="#3C5BFF"
+              color={completedStages.arrange ? "#FFFFFF" : "#3C5BFF"}
               style={styles.stageIcon}
             />
           </View>
           <Text style={styles.stageNumber}>3</Text>
         </View>
       </View>
+
+      {/* Line between Stage 3 and 4 */}
       <View
         style={[
           styles.stageLine,
-          currentStage > 3 ? styles.stageLineActive : styles.stageLineInactive,
+          completedStages.arrange
+            ? styles.stageLineActive
+            : styles.stageLineInactive,
         ]}
       />
+
+      {/* Stage 4 - Write */}
       <View style={styles.stageItem}>
         <View style={styles.stageIconWrapper}>
-          <View style={styles.stageIconContainer}>
+          <View
+            style={[
+              styles.stageIconContainer,
+              completedStages.write && styles.completedStageIcon,
+            ]}
+          >
             <FontAwesome5
               name="pencil-alt"
               size={14}
-              color="#3C5BFF"
+              color={completedStages.write ? "#FFFFFF" : "#3C5BFF"}
               style={styles.stageIcon}
             />
           </View>
@@ -112,8 +179,16 @@ const LessonCard: React.FC<LessonCardProps> = ({
   progress,
   words,
   onPress,
+  stageStatus,
 }) => {
+  // Keep currentStage for backwards compatibility
   const currentStage = Math.floor((progress / 100) * 4) + 1;
+
+  // Log progress and status
+  console.log(`Rendering Card for Lesson ${lessonId}:`, {
+    progress,
+    stageStatus,
+  });
 
   return (
     <TouchableOpacity
@@ -133,7 +208,7 @@ const LessonCard: React.FC<LessonCardProps> = ({
               progress > 0 && styles.activeProgress,
             ]}
           >
-            {progress}%
+            {Math.round(progress)}%
           </Text>
         </View>
         {!isLocked && (
@@ -144,7 +219,7 @@ const LessonCard: React.FC<LessonCardProps> = ({
         )}
       </View>
 
-      <LessonStages currentStage={currentStage} />
+      <LessonStages currentStage={currentStage} stageStatus={stageStatus} />
 
       {isLocked && (
         <View style={styles.lockOverlay}>
@@ -184,21 +259,170 @@ const LessonsList: React.FC<LessonsListProps> = ({
 
   const lessons = Array.from({ length: 5 }, (_, i) => i + 1);
 
+  // Progress state for all lessons
+  const [lessonsProgress, setLessonsProgress] = useState<{
+    [key: string]: {
+      completedPercentage: number;
+      stageStatus: StageStatus;
+    };
+  }>({});
+
+  // Load progress from backend
+  const loadProgress = async () => {
+    try {
+      // Check if user is logged in
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        console.log("User not logged in, cannot load progress");
+        return;
+      }
+
+      // Get progress from backend
+      const response = await getUserProgress();
+      console.log("Progress response:", response);
+
+      // Backenddan qaytgan javobni tekshirish
+      if (response && response.success && Array.isArray(response.data)) {
+        // Extract progress information for lessons
+        const progressMap: {
+          [key: string]: {
+            completedPercentage: number;
+            stageStatus: StageStatus;
+          };
+        } = {};
+
+        // Process only lessons that are not locked
+        const unlockedLessons = lessons.filter((id) => id <= currentLesson);
+
+        console.log("Unlocked lessons:", unlockedLessons);
+        console.log("Response data lessons:", response.data);
+
+        // Find corresponding lesson data
+        unlockedLessons.forEach((lessonId) => {
+          const lessonData = response.data.find((lesson) => {
+            // Append level to match format from backend
+            const lessonIdWithLevel = `${level}-${lessonId}`;
+            const matches = lesson.lessonId === lessonIdWithLevel;
+            console.log(
+              `Checking lesson ${lessonIdWithLevel} against ${lesson.lessonId}: ${matches}`
+            );
+            return matches;
+          });
+
+          console.log(`Lesson data for ${level}-${lessonId}:`, lessonData);
+
+          if (lessonData) {
+            // Stages obyektini tekshirish
+            let stageStatus = {
+              memorize: false,
+              match: false,
+              arrange: false,
+              write: false,
+            };
+
+            // Backend ma'lumotida stages [Object] sifatida kelsa ham
+            // to'g'ri qiymatni olishga harakat qilish
+            if (lessonData.stages) {
+              try {
+                const stages = lessonData.stages;
+                // Bosqichlar holatini tekshirish
+                if (typeof stages === "object") {
+                  // Memorize
+                  if (
+                    stages.memorize &&
+                    stages.memorize.completed !== undefined
+                  ) {
+                    stageStatus.memorize = !!stages.memorize.completed;
+                  }
+                  // Match
+                  if (stages.match && stages.match.completed !== undefined) {
+                    stageStatus.match = !!stages.match.completed;
+                  }
+                  // Arrange
+                  if (
+                    stages.arrange &&
+                    stages.arrange.completed !== undefined
+                  ) {
+                    stageStatus.arrange = !!stages.arrange.completed;
+                  }
+                  // Write
+                  if (stages.write && stages.write.completed !== undefined) {
+                    stageStatus.write = !!stages.write.completed;
+                  }
+                }
+              } catch (e) {
+                console.error("Error parsing stages:", e);
+              }
+            }
+
+            // Create object with completion status and percentage
+            progressMap[lessonId] = {
+              completedPercentage: lessonData.completedPercentage || 0,
+              stageStatus: stageStatus,
+            };
+            console.log(
+              `Progress map for lesson ${lessonId}:`,
+              progressMap[lessonId]
+            );
+          } else {
+            // Default values if lesson data not found
+            progressMap[lessonId] = {
+              completedPercentage: 0,
+              stageStatus: {
+                memorize: false,
+                match: false,
+                arrange: false,
+                write: false,
+              },
+            };
+          }
+        });
+
+        console.log("Final progress map:", progressMap);
+        setLessonsProgress(progressMap);
+      }
+    } catch (error) {
+      console.error("Error loading progress:", error);
+    }
+  };
+
+  // Load progress on component mount
+  useEffect(() => {
+    // Timeout qo'yish - backend javob berishga ulgurishini ta'minlash uchun
+    const timer = setTimeout(() => {
+      loadProgress();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [currentLesson, level]);
+
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.levelTitle}>{title}</Text>
-      {lessons.map((lessonId) => (
-        <LessonCard
-          key={lessonId}
-          lessonId={lessonId}
-          isLocked={lessonId > currentLesson}
-          progress={
-            lessonId < currentLesson ? 100 : lessonId === currentLesson ? 0 : 0
-          }
-          words={lessonsWords[lessonId] || []}
-          onPress={() => onLessonPress(lessonId, lessonsWords[lessonId] || [])}
-        />
-      ))}
+      {lessons.map((lessonId) => {
+        // Get progress for this lesson if available
+        const lessonProgress = lessonsProgress[lessonId];
+
+        return (
+          <LessonCard
+            key={lessonId}
+            lessonId={lessonId}
+            isLocked={lessonId > currentLesson}
+            progress={
+              lessonProgress
+                ? lessonProgress.completedPercentage
+                : lessonId < currentLesson
+                ? 100
+                : 0
+            }
+            stageStatus={lessonProgress?.stageStatus}
+            words={lessonsWords[lessonId] || []}
+            onPress={() =>
+              onLessonPress(lessonId, lessonsWords[lessonId] || [])
+            }
+          />
+        );
+      })}
     </ScrollView>
   );
 };
@@ -262,7 +486,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   activeProgress: {
-    color: "#3C5BFF",
+    color: "#4CAF50",
     opacity: 1,
   },
   coinsContainer: {
@@ -304,6 +528,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
   },
+  // Completed stage icon style - background green
+  completedStageIcon: {
+    backgroundColor: "#4CAF50",
+  },
   stageIcon: {
     opacity: 1,
   },
@@ -322,7 +550,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   stageLineActive: {
-    backgroundColor: "#4B66FF",
+    backgroundColor: "#4CAF50",
   },
   stageLineInactive: {
     backgroundColor: "#E5E9FF",

@@ -19,6 +19,7 @@ interface IMatchStageProgress {
 interface ILessonProgress {
   userId: string;
   lessonId: string;
+  completedPercentage?: number;
   stages: {
     memorize: IStageProgress;
     match: IMatchStageProgress;
@@ -110,11 +111,41 @@ class ProgressService {
     try {
       console.log("progressService: Getting user progress");
       const response = await getUserProgress();
-      console.log("progressService: User progress received:", response.data);
-      return response.data;
+
+      // Log the raw data for debugging
+      console.log(
+        "progressService: RAW API RESPONSE:",
+        JSON.stringify(response.data)
+      );
+
+      // Backenddan qaytgan javob Array ko'rinishida yoki object ichida data field bo'lishi mumkin
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          // Agar to'g'ridan-to'g'ri array qaytsa
+          console.log("progressService: Progress data is direct array");
+          return response.data;
+        } else if (response.data.success && Array.isArray(response.data.data)) {
+          // Agar success va data field bo'lsa
+          console.log("progressService: Progress data is in data field");
+          return response.data.data;
+        } else {
+          console.error(
+            "progressService: Unexpected response format",
+            response.data
+          );
+          return [];
+        }
+      } else {
+        console.error("progressService: No data in response");
+        return [];
+      }
     } catch (error) {
       console.error("progressService: Error getting user progress", error);
-      throw error;
+      if (error instanceof Error) {
+        console.error("progressService: Error message:", error.message);
+      }
+      // Return empty array to prevent UI errors
+      return [];
     }
   }
 
@@ -126,8 +157,8 @@ class ProgressService {
       );
       console.log("progressService: With words:", words);
 
-      // Make API call to initialize progress
-      const response = await initializeLessonProgress(lessonId, words);
+      // initializeLessonProgress metodini chaqirish
+      const response = await this.initializeLessonProgress(lessonId, words);
       console.log(
         "progressService: Lesson progress initialized successfully",
         response
@@ -135,7 +166,7 @@ class ProgressService {
       return response;
     } catch (error) {
       console.error("progressService: Error initializing progress:", error);
-      throw error;
+      return null; // Xato yuz berganda null qaytarish
     }
   }
 
@@ -183,58 +214,75 @@ class ProgressService {
         return this.progress;
       }
 
-      const newProgress = await this.retryOperation(() =>
-        initializeLessonProgress(lessonId, words)
-      );
-
-      if (newProgress) {
-        this.progress.lessons = newProgress;
-        await this.saveProgressToCache();
+      try {
+        // Call API to initialize lesson progress
+        const response = await initializeLessonProgress(lessonId, words);
+        
+        // Process the response based on its format
+        if (Array.isArray(response)) {
+          this.progress.lessons = response;
+          await this.saveProgressToCache();
+        } else if (response && Array.isArray(response.lessons)) {
+          this.progress.lessons = response.lessons;
+          await this.saveProgressToCache();
+        } else {
+          console.log("Unexpected response format from initializeLessonProgress:", response);
+          
+          // Fallback: Create local progress data
+          this.createLocalLessonProgress(lessonId, words);
+        }
+      } catch (apiError) {
+        console.error("API initialization error:", apiError);
+        // Create local progress data on API error
+        this.createLocalLessonProgress(lessonId, words);
       }
 
       return this.progress;
     } catch (error) {
-      const existingLesson = this.progress.lessons.find(
-        (l) => String(l.lessonId) === String(lessonId)
-      );
-
-      if (!existingLesson) {
-        const newLessonProgress: ILessonProgress = {
-          userId: "local",
-          lessonId,
-          stages: {
-            memorize: {
-              completed: false,
-              completedWords: [],
-              remainingWords: [...words],
-            },
-            match: {
-              completed: false,
-              progress: 0,
-            },
-            arrange: {
-              completed: false,
-              completedWords: [],
-              remainingWords: [...words],
-            },
-            write: {
-              completed: false,
-              completedWords: [],
-              remainingWords: [...words],
-            },
-          },
-        };
-
-        this.progress.lessons.push(newLessonProgress);
-        await this.saveProgressToCache();
-
-        // Add to sync queue for later synchronization
-        this.addToSyncQueue(async () => {
-          await initializeLessonProgress(lessonId, words);
-        });
-      }
-
+      console.error("Error in initializeLessonProgress:", error);
+      
+      // Create local progress on any error
+      this.createLocalLessonProgress(lessonId, words);
       return this.progress;
+    }
+  }
+  
+  // Helper to create local lesson progress
+  private createLocalLessonProgress(lessonId: string, words: string[]) {
+    const existingLesson = this.progress.lessons.find(
+      (l) => String(l.lessonId) === String(lessonId)
+    );
+    
+    if (!existingLesson) {
+      const newLessonProgress: ILessonProgress = {
+        userId: "local",
+        lessonId,
+        completedPercentage: 0,
+        stages: {
+          memorize: {
+            completed: false,
+            completedWords: [],
+            remainingWords: [...words],
+          },
+          match: {
+            completed: false,
+            progress: 0,
+          },
+          arrange: {
+            completed: false,
+            completedWords: [],
+            remainingWords: [...words],
+          },
+          write: {
+            completed: false,
+            completedWords: [],
+            remainingWords: [...words],
+          },
+        },
+      };
+
+      this.progress.lessons.push(newLessonProgress);
+      this.saveProgressToCache();
     }
   }
 
@@ -264,26 +312,39 @@ class ProgressService {
         this.updateLocalProgress(lessonProgress, stage, word, isCorrect);
         await this.saveProgressToCache();
 
-        // Add API update to sync queue
-        this.addToSyncQueue(async () => {
-          const progress = await updateStageProgress(
+        // Call API to update progress
+        try {
+          const response = await updateStageProgress(
             lessonId,
             stage,
             word,
             isCorrect,
             words
           );
-          if (progress) {
-            this.progress.lessons = progress;
+
+          // API response could be an array or object with 'lessons' field
+          if (Array.isArray(response)) {
+            this.progress.lessons = response;
             await this.saveProgressToCache();
+          } else if (response && Array.isArray(response.lessons)) {
+            this.progress.lessons = response.lessons;
+            await this.saveProgressToCache();
+          } else {
+            console.log(
+              "Unexpected API response format for updateStageProgress:",
+              response
+            );
           }
-        });
+        } catch (apiError) {
+          console.error("API update error, using local data:", apiError);
+          // Error during API call still falls back to local data
+        }
       }
 
       return this.progress;
     } catch (error) {
       console.error("Progress Service: updateStageProgress error:", error);
-      throw error;
+      return this.progress; // Return existing progress on error
     }
   }
 

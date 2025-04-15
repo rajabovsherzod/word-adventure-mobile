@@ -40,6 +40,7 @@ interface GameState {
   selectedUzbekWord: string | null;
   arrangedLetters: string[];
   selectedOption: string | null;
+  overallProgress?: number;
   stageProgress: {
     memorize: {
       completed: boolean;
@@ -558,14 +559,21 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
       const progressData = await progressService.getUserProgress();
       console.log("Got progress data:", progressData);
 
-      if (!progressData || !Array.isArray(progressData)) {
-        console.error("Invalid progress data:", progressData);
+      // Hech qanday ma'lumot yo'qligini tekshirish
+      if (!progressData) {
+        console.error("No progress data received");
+        return;
+      }
+
+      // Array emasligini tekshirish
+      if (!Array.isArray(progressData)) {
+        console.error("Progress data is not an array:", progressData);
         return;
       }
 
       // Joriy dars uchun progress ma'lumotlarini topish
       const lessonProgress = progressData.find((p) => p.lessonId === lesson.id);
-      console.log("Lesson progress:", lessonProgress);
+      console.log("Lesson progress for current lesson:", lessonProgress);
 
       if (lessonProgress && lessonProgress.stages) {
         // Progress ma'lumotlari bilan UI ni yangilash
@@ -577,13 +585,18 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
             lessonProgress.stages.arrange?.completedWords || [];
           const writeWords = lessonProgress.stages.write?.completedWords || [];
 
+          // Backend tomondan olingan progress qiymati
+          const overallProgress = lessonProgress.completedPercentage || 0;
+
           console.log("Memorize completed words:", memorizeWords);
           console.log("Match progress:", matchProgress);
           console.log("Arrange completed words:", arrangeWords);
           console.log("Write completed words:", writeWords);
+          console.log("Overall progress from backend:", overallProgress);
 
           return {
             ...prev,
+            overallProgress, // Backend tomondan olingan progress
             stageProgress: {
               memorize: {
                 completed: lessonProgress.stages.memorize?.completed || false,
@@ -610,6 +623,8 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
             },
           };
         });
+      } else {
+        console.log("No progress found for current lesson:", lesson.id);
       }
     } catch (error) {
       console.error("Error updating progress UI:", error);
@@ -634,6 +649,8 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
       console.log(
         `Updating progress - Stage: ${stage}, Word: ${word}, Correct: ${isCorrect}`
       );
+
+      // Progress service chaqirish
       await progressService.updateProgress(
         lesson.id,
         stage,
@@ -647,6 +664,12 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
       await updateProgressUI();
     } catch (error) {
       console.error("Error updating progress:", error);
+      // Xato bo'lgan taqdirda ham UI ni yangilashga harakat qilish
+      try {
+        await updateProgressUI();
+      } catch (uiError) {
+        console.error("Failed to update UI after error:", uiError);
+      }
     }
   };
 
@@ -689,11 +712,24 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
         return;
       }
 
-      // Initialize progress
-      await progressService.initializeProgress(lesson.id, wordStrings);
+      // Initialize progress using progressService.initializeLessonProgress instead of initializeProgress
+      await progressService.initializeLessonProgress(lesson.id, wordStrings);
       console.log("Progress initialized successfully");
+
+      // Update UI after initialization
+      await updateProgressUI();
     } catch (error) {
       console.error("Error initializing progress:", error);
+
+      // Try to update UI even after error
+      try {
+        await updateProgressUI();
+      } catch (uiError) {
+        console.error(
+          "Failed to update UI after initialization error:",
+          uiError
+        );
+      }
     }
   };
 
@@ -1163,21 +1199,34 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     return null;
   }
 
-  const progress =
-    gameState.currentStage === "stages"
-      ? Math.floor(
-          ((gameState.stageProgress.memorize.completedWords.length +
-            Math.floor(gameState.stageProgress.match.progress / 10) +
-            gameState.stageProgress.arrange.completedWords.length +
-            gameState.stageProgress.write.completedWords.length) /
-            (MAX_WORDS_PER_LESSON * 4)) *
-            100
-        )
-      : Math.floor(
-          ((gameState.currentWordIndex + 1) /
-            Math.min(words.length, MAX_WORDS_PER_LESSON)) *
-            100
-        );
+  // Progress bar uchun qiymatni qaytaradi
+  const getProgressPercentage = () => {
+    // O'yin bosqichida - joriy so'z indeksiga qarab progress
+    if (gameState.currentStage !== "stages") {
+      return Math.floor(
+        ((gameState.currentWordIndex + 1) /
+          Math.min(words.length, MAX_WORDS_PER_LESSON)) *
+          100
+      );
+    }
+
+    // Stages ekranida - backend tomondan olingan qiymatdan foydalanish
+    if (gameState.overallProgress !== undefined) {
+      return gameState.overallProgress;
+    }
+
+    // Backenddan qiymat yo'q bo'lsa - frontend hisoblab beradi
+    return Math.floor(
+      ((gameState.stageProgress.memorize.completedWords.length +
+        Math.floor(gameState.stageProgress.match.progress / 10) +
+        gameState.stageProgress.arrange.completedWords.length +
+        gameState.stageProgress.write.completedWords.length) /
+        (MAX_WORDS_PER_LESSON * 4)) *
+        100
+    );
+  };
+
+  const progress = getProgressPercentage();
 
   return (
     <View style={styles.container}>
