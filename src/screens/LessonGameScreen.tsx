@@ -27,6 +27,22 @@ type Word = {
 const MAX_WORDS_PER_LESSON = 10;
 const MAX_MISTAKES = 3;
 
+// LessonId formatini to'g'irlash uchun helper funksiya
+const formatLessonId = (lesson: any): string => {
+  // Agar lessonId to'g'ri formatda bo'lsa qaytarish
+  if (typeof lesson.id === "string" && lesson.id.includes("-")) {
+    console.log("Lesson ID is already in correct format:", lesson.id);
+    return lesson.id;
+  }
+
+  // Aks holda, to'g'ri formatga o'tkazish
+  const level = lesson.level || 1;
+  const lessonId = lesson.id || 1;
+  const formattedId = `${level}-${lessonId}`;
+  console.log(`Converting lesson ID from ${lesson.id} to ${formattedId}`);
+  return formattedId;
+};
+
 type GameStage = "stages" | "memorize" | "match" | "arrange" | "write";
 
 interface GameState {
@@ -532,8 +548,21 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
           return;
         }
 
+        // Log lesson details for debugging
+        console.log("LESSON DETAILS:", {
+          id: lesson.id,
+          words: lesson.words
+            .map((w) => ({ english: w.english, id: w.id }))
+            .slice(0, 3), // Show first 3 words only
+        });
+
+        // Check if lesson ID format is correct
+        const formattedId = formatLessonId(lesson);
+        console.log(`Lesson ID format check: ${lesson.id} -> ${formattedId}`);
+
         console.log("Dars progressini boshlash: ", {
           lessonId: lesson.id,
+          formattedLessonId: formattedId,
           words: lesson.words
             .slice(0, MAX_WORDS_PER_LESSON)
             .map((w) => w.english),
@@ -572,7 +601,14 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
       }
 
       // Joriy dars uchun progress ma'lumotlarini topish
-      const lessonProgress = progressData.find((p) => p.lessonId === lesson.id);
+      const formattedLessonId = formatLessonId(lesson);
+      console.log(
+        "Looking for progress with formatted lesson ID:",
+        formattedLessonId
+      );
+      const lessonProgress = progressData.find(
+        (p) => p.lessonId === formattedLessonId
+      );
       console.log("Lesson progress for current lesson:", lessonProgress);
 
       if (lessonProgress && lessonProgress.stages) {
@@ -652,7 +688,7 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
 
       // Progress service chaqirish
       await progressService.updateProgress(
-        lesson.id,
+        formatLessonId(lesson),
         stage,
         word,
         isCorrect,
@@ -712,8 +748,18 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
         return;
       }
 
+      // Format lesson ID correctly for backend
+      const formattedLessonId = formatLessonId(lesson);
+      console.log(
+        "Using formatted lesson ID for initialization:",
+        formattedLessonId
+      );
+
       // Initialize progress using progressService.initializeLessonProgress instead of initializeProgress
-      await progressService.initializeLessonProgress(lesson.id, wordStrings);
+      await progressService.initializeLessonProgress(
+        formattedLessonId,
+        wordStrings
+      );
       console.log("Progress initialized successfully");
 
       // Update UI after initialization

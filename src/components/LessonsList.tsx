@@ -279,10 +279,41 @@ const LessonsList: React.FC<LessonsListProps> = ({
 
       // Get progress from backend
       const response = await getUserProgress();
-      console.log("Progress response:", response);
+      console.log("RAW Progress response:", JSON.stringify(response, null, 2));
 
-      // Backenddan qaytgan javobni tekshirish
-      if (response && response.success && Array.isArray(response.data)) {
+      // Backenddan qaytgan javobni tekshirish - har qanday formatda kelsa ham ishlaydi
+      let progressData = [];
+
+      if (response && response.data && Array.isArray(response.data)) {
+        progressData = response.data;
+      } else if (response && Array.isArray(response)) {
+        progressData = response;
+      } else if (response && response.success && Array.isArray(response.data)) {
+        progressData = response.data;
+      }
+
+      console.log(
+        "PROCESSED Progress Data:",
+        JSON.stringify(progressData, null, 2)
+      );
+      console.log("Progress data lessons count:", progressData.length);
+      // Lesson ID formatini tekshirish
+      if (progressData.length > 0) {
+        console.log("First lesson ID format:", progressData[0].lessonId);
+        progressData.forEach((lesson) => {
+          console.log(
+            `Lesson ID in data: ${lesson.lessonId}, completion: ${lesson.completedPercentage}%, stages:`,
+            lesson.stages
+              ? {
+                  memorize: lesson.stages.memorize?.completed || false,
+                  match: lesson.stages.match?.completed || false,
+                  arrange: lesson.stages.arrange?.completed || false,
+                  write: lesson.stages.write?.completed || false,
+                }
+              : "No stages data"
+          );
+        });
+
         // Extract progress information for lessons
         const progressMap: {
           [key: string]: {
@@ -295,77 +326,87 @@ const LessonsList: React.FC<LessonsListProps> = ({
         const unlockedLessons = lessons.filter((id) => id <= currentLesson);
 
         console.log("Unlocked lessons:", unlockedLessons);
-        console.log("Response data lessons:", response.data);
+        console.log("Response data lessons:", progressData);
 
         // Find corresponding lesson data
         unlockedLessons.forEach((lessonId) => {
-          const lessonData = response.data.find((lesson) => {
-            // Append level to match format from backend
-            const lessonIdWithLevel = `${level}-${lessonId}`;
-            const matches = lesson.lessonId === lessonIdWithLevel;
+          // Fix: level qiymatini to'g'irlash
+          // Backend lessonId formati: "1-1" (level-lesson)
+          // "Beginner" emas, balki raqam kerak
+          let numericLevel = level;
+          if (level === "Beginner") numericLevel = "1";
+          if (level === "Elementary") numericLevel = "2";
+          if (level === "Pre-Intermediate") numericLevel = "3";
+          if (level === "Intermediate") numericLevel = "4";
+          if (level === "Upper-Intermediate") numericLevel = "5";
+          if (level === "Advanced") numericLevel = "6";
+
+          const lessonIdWithLevel = `${numericLevel}-${lessonId}`;
+          console.log(
+            `Searching for lesson: ${lessonIdWithLevel} (original level: ${level})`
+          );
+
+          // Har bir backend dars ma'lumotini tekshiramiz
+          for (const lesson of progressData) {
             console.log(
-              `Checking lesson ${lessonIdWithLevel} against ${lesson.lessonId}: ${matches}`
+              `Comparing ${lesson.lessonId} with ${lessonIdWithLevel}`
             );
-            return matches;
-          });
+            if (lesson.lessonId === lessonIdWithLevel) {
+              console.log(
+                `FOUND Lesson data for ${lessonIdWithLevel}:`,
+                lesson
+              );
 
-          console.log(`Lesson data for ${level}-${lessonId}:`, lessonData);
+              // Stage statuslarini aniqlaymiz
+              const stageStatus = {
+                memorize: false,
+                match: false,
+                arrange: false,
+                write: false,
+              };
 
-          if (lessonData) {
-            // Stages obyektini tekshirish
-            let stageStatus = {
-              memorize: false,
-              match: false,
-              arrange: false,
-              write: false,
-            };
-
-            // Backend ma'lumotida stages [Object] sifatida kelsa ham
-            // to'g'ri qiymatni olishga harakat qilish
-            if (lessonData.stages) {
-              try {
-                const stages = lessonData.stages;
-                // Bosqichlar holatini tekshirish
-                if (typeof stages === "object") {
-                  // Memorize
-                  if (
-                    stages.memorize &&
-                    stages.memorize.completed !== undefined
-                  ) {
-                    stageStatus.memorize = !!stages.memorize.completed;
-                  }
-                  // Match
-                  if (stages.match && stages.match.completed !== undefined) {
-                    stageStatus.match = !!stages.match.completed;
-                  }
-                  // Arrange
-                  if (
-                    stages.arrange &&
-                    stages.arrange.completed !== undefined
-                  ) {
-                    stageStatus.arrange = !!stages.arrange.completed;
-                  }
-                  // Write
-                  if (stages.write && stages.write.completed !== undefined) {
-                    stageStatus.write = !!stages.write.completed;
-                  }
+              if (lesson.stages) {
+                // Memorize stage
+                if (
+                  lesson.stages.memorize &&
+                  lesson.stages.memorize.completed
+                ) {
+                  stageStatus.memorize = true;
                 }
-              } catch (e) {
-                console.error("Error parsing stages:", e);
-              }
-            }
 
-            // Create object with completion status and percentage
-            progressMap[lessonId] = {
-              completedPercentage: lessonData.completedPercentage || 0,
-              stageStatus: stageStatus,
-            };
-            console.log(
-              `Progress map for lesson ${lessonId}:`,
-              progressMap[lessonId]
-            );
-          } else {
-            // Default values if lesson data not found
+                // Match stage
+                if (lesson.stages.match && lesson.stages.match.completed) {
+                  stageStatus.match = true;
+                }
+
+                // Arrange stage
+                if (lesson.stages.arrange && lesson.stages.arrange.completed) {
+                  stageStatus.arrange = true;
+                }
+
+                // Write stage
+                if (lesson.stages.write && lesson.stages.write.completed) {
+                  stageStatus.write = true;
+                }
+              }
+
+              // Progress ma'lumotini saqlash
+              progressMap[lessonId] = {
+                completedPercentage: lesson.completedPercentage || 0,
+                stageStatus: stageStatus,
+              };
+
+              console.log(`Stage status for lesson ${lessonId}:`, stageStatus);
+              console.log(
+                `Progress percentage for lesson ${lessonId}:`,
+                lesson.completedPercentage || 0
+              );
+              break;
+            }
+          }
+
+          // Agar dars ma'lumoti topilmasa, default qiymatlar
+          if (!progressMap[lessonId]) {
             progressMap[lessonId] = {
               completedPercentage: 0,
               stageStatus: {
@@ -386,15 +427,20 @@ const LessonsList: React.FC<LessonsListProps> = ({
     }
   };
 
-  // Load progress on component mount
+  // Load progress on component mount and when data changes
   useEffect(() => {
-    // Timeout qo'yish - backend javob berishga ulgurishini ta'minlash uchun
-    const timer = setTimeout(() => {
-      loadProgress();
-    }, 300);
+    console.log(
+      `LessonsList mounted for level:${level}, card:${cardId}, currentLesson:${currentLesson}`
+    );
+    loadProgress();
 
-    return () => clearTimeout(timer);
-  }, [currentLesson, level]);
+    // Har 2 sekundda progressni yangilash
+    const interval = setInterval(() => {
+      loadProgress();
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [level, cardId, currentLesson]);
 
   return (
     <ScrollView style={styles.container}>
@@ -403,19 +449,31 @@ const LessonsList: React.FC<LessonsListProps> = ({
         // Get progress for this lesson if available
         const lessonProgress = lessonsProgress[lessonId];
 
+        // Show actual progress from backend or default value
+        const progress = lessonProgress
+          ? lessonProgress.completedPercentage
+          : lessonId < currentLesson
+          ? 100
+          : 0;
+
+        // Show actual stage status from backend or default value
+        const stageStatus = lessonProgress
+          ? lessonProgress.stageStatus
+          : undefined;
+
+        console.log(`Card ${lessonId} FINAL values:`, {
+          progress,
+          stageStatus,
+          isAvailable: lessonId <= currentLesson,
+        });
+
         return (
           <LessonCard
             key={lessonId}
             lessonId={lessonId}
             isLocked={lessonId > currentLesson}
-            progress={
-              lessonProgress
-                ? lessonProgress.completedPercentage
-                : lessonId < currentLesson
-                ? 100
-                : 0
-            }
-            stageStatus={lessonProgress?.stageStatus}
+            progress={progress}
+            stageStatus={stageStatus}
             words={lessonsWords[lessonId] || []}
             onPress={() =>
               onLessonPress(lessonId, lessonsWords[lessonId] || [])
