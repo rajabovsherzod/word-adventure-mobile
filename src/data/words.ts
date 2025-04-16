@@ -318,7 +318,7 @@ export const words: Word[] = [
   {
     id: "1-4-8",
     english: "orange",
-    uzbek: "sariq",
+    uzbek: "apelsin",
     level: 1,
     cardId: 1,
     lessonId: 4,

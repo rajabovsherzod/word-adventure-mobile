@@ -26,9 +26,11 @@ interface LessonCardProps {
 const LessonStages = ({
   currentStage = 1,
   stageStatus,
+  progress = 0,
 }: {
   currentStage?: number;
   stageStatus?: StageStatus;
+  progress?: number;
 }) => {
   // Default stages if no status provided
   const completedStages = stageStatus || {
@@ -38,6 +40,17 @@ const LessonStages = ({
     write: false,
   };
 
+  // Progressga qarab chiziqlarni ranglash
+  const isLine1Active = progress >= 25 || completedStages.memorize;
+  const isLine2Active = progress >= 50 || completedStages.match;
+  const isLine3Active = progress >= 75 || completedStages.arrange;
+
+  // Progressga qarab bosqichlarni ranglash (agar completedStages bo'lmasa)
+  const isStage1Active = progress >= 25 || completedStages.memorize;
+  const isStage2Active = progress >= 50 || completedStages.match;
+  const isStage3Active = progress >= 75 || completedStages.arrange;
+  const isStage4Active = progress >= 100 || completedStages.write;
+
   return (
     <View style={styles.stagesContainer}>
       {/* Stage 1 - Memorize */}
@@ -46,13 +59,13 @@ const LessonStages = ({
           <View
             style={[
               styles.stageIconContainer,
-              completedStages.memorize && styles.completedStageIcon,
+              isStage1Active && styles.completedStageIcon,
             ]}
           >
             <FontAwesome5
               name="book-reader"
               size={14}
-              color={completedStages.memorize ? "#FFFFFF" : "#3C5BFF"}
+              color={isStage1Active ? "#FFFFFF" : "#3C5BFF"}
               style={styles.stageIcon}
             />
           </View>
@@ -60,29 +73,19 @@ const LessonStages = ({
         </View>
       </View>
 
-      {/* Line between Stage 1 and 2 */}
-      <View
-        style={[
-          styles.stageLine,
-          completedStages.memorize
-            ? styles.stageLineActive
-            : styles.stageLineInactive,
-        ]}
-      />
-
       {/* Stage 2 - Match */}
       <View style={styles.stageItem}>
         <View style={styles.stageIconWrapper}>
           <View
             style={[
               styles.stageIconContainer,
-              completedStages.match && styles.completedStageIcon,
+              isStage2Active && styles.completedStageIcon,
             ]}
           >
             <FontAwesome5
               name="sync"
               size={14}
-              color={completedStages.match ? "#FFFFFF" : "#3C5BFF"}
+              color={isStage2Active ? "#FFFFFF" : "#3C5BFF"}
               style={styles.stageIcon}
             />
           </View>
@@ -90,29 +93,19 @@ const LessonStages = ({
         </View>
       </View>
 
-      {/* Line between Stage 2 and 3 */}
-      <View
-        style={[
-          styles.stageLine,
-          completedStages.match
-            ? styles.stageLineActive
-            : styles.stageLineInactive,
-        ]}
-      />
-
       {/* Stage 3 - Arrange */}
       <View style={styles.stageItem}>
         <View style={styles.stageIconWrapper}>
           <View
             style={[
               styles.stageIconContainer,
-              completedStages.arrange && styles.completedStageIcon,
+              isStage3Active && styles.completedStageIcon,
             ]}
           >
             <FontAwesome5
               name="check-circle"
               size={14}
-              color={completedStages.arrange ? "#FFFFFF" : "#3C5BFF"}
+              color={isStage3Active ? "#FFFFFF" : "#3C5BFF"}
               style={styles.stageIcon}
             />
           </View>
@@ -120,35 +113,53 @@ const LessonStages = ({
         </View>
       </View>
 
-      {/* Line between Stage 3 and 4 */}
-      <View
-        style={[
-          styles.stageLine,
-          completedStages.arrange
-            ? styles.stageLineActive
-            : styles.stageLineInactive,
-        ]}
-      />
-
       {/* Stage 4 - Write */}
       <View style={styles.stageItem}>
         <View style={styles.stageIconWrapper}>
           <View
             style={[
               styles.stageIconContainer,
-              completedStages.write && styles.completedStageIcon,
+              isStage4Active && styles.completedStageIcon,
             ]}
           >
             <FontAwesome5
               name="pencil-alt"
               size={14}
-              color={completedStages.write ? "#FFFFFF" : "#3C5BFF"}
+              color={isStage4Active ? "#FFFFFF" : "#3C5BFF"}
               style={styles.stageIcon}
             />
           </View>
           <Text style={styles.stageNumber}>4</Text>
         </View>
       </View>
+
+      {/* Chiziqlar - endi ustma-ust joylashtirilib, zIndex bilan tartiblanadi */}
+      {/* Line 1 (between stage 1 and 2) */}
+      <View
+        style={[
+          styles.stageLine,
+          { left: "8%", width: "29%" },
+          isLine1Active ? styles.stageLineActive : styles.stageLineInactive,
+        ]}
+      />
+
+      {/* Line 2 (between stage 2 and 3) */}
+      <View
+        style={[
+          styles.stageLine,
+          { left: "36%", width: "29%" },
+          isLine2Active ? styles.stageLineActive : styles.stageLineInactive,
+        ]}
+      />
+
+      {/* Line 3 (between stage 3 and 4) */}
+      <View
+        style={[
+          styles.stageLine,
+          { left: "64%", width: "31%" },
+          isLine3Active ? styles.stageLineActive : styles.stageLineInactive,
+        ]}
+      />
     </View>
   );
 };
@@ -168,11 +179,8 @@ const LessonCard: React.FC<LessonCardProps> = ({
   // Level formatini saqlab qolish uchun
   let numericLevel = "";
   if (level === "Beginner") numericLevel = "1";
-  if (level === "Elementary") numericLevel = "2";
-  if (level === "Pre-Intermediate") numericLevel = "3";
-  if (level === "Intermediate") numericLevel = "4";
-  if (level === "Upper-Intermediate") numericLevel = "5";
-  if (level === "Advanced") numericLevel = "6";
+  if (level === "Intermediate") numericLevel = "2";
+  if (level === "Advanced") numericLevel = "3";
 
   // Debug
   // console.log(`LessonCard ${lessonId} rendering: Progress=${progress}, Level=${level}, StageStatus:`, stageStatus);
@@ -207,7 +215,11 @@ const LessonCard: React.FC<LessonCardProps> = ({
         )}
       </View>
 
-      <LessonStages currentStage={currentStage} stageStatus={stageStatus} />
+      <LessonStages
+        currentStage={currentStage}
+        stageStatus={stageStatus}
+        progress={progress}
+      />
 
       {isLocked && (
         <View style={styles.lockOverlay}>
@@ -290,6 +302,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingHorizontal: 10,
     position: "relative",
+    height: 60,
   },
   stageItem: {
     alignItems: "center",
@@ -307,7 +320,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
   },
-  // Completed stage icon style - background green
   completedStageIcon: {
     backgroundColor: "#4CAF50",
   },
@@ -322,10 +334,8 @@ const styles = StyleSheet.create({
   },
   stageLine: {
     position: "absolute",
-    top: 15,
-    left: 40,
-    right: 40,
-    height: 3,
+    top: 14, // Iconning o'rtasiga to'g'rilash (markazi)
+    height: 4, // Yo'g'onroq chiziq
     zIndex: 1,
   },
   stageLineActive: {

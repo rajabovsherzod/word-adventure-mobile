@@ -70,6 +70,7 @@ const LessonsList: React.FC<LessonsListProps> = ({
       // Check if user is logged in
       const token = await AsyncStorage.getItem("token");
       if (!token) {
+        console.error("User not logged in, cannot load progress");
         return;
       }
 
@@ -79,86 +80,138 @@ const LessonsList: React.FC<LessonsListProps> = ({
       if (level === "Intermediate") numericLevel = "2"; // To'g'rilandi
       if (level === "Advanced") numericLevel = "3"; // To'g'rilandi
 
+      console.log(
+        `LessonsList loadProgress - Level: ${level}, NumericLevel: ${numericLevel}`
+      );
+
       // Get progress from backend
-      const response = await getUserProgress();
+      try {
+        console.log("Calling getUserProgress API...");
+        const response = await getUserProgress();
+        console.log("getUserProgress API response received", response);
 
-      // Backenddan qaytgan javobni tekshirish
-      let progressData = [];
+        // Backenddan qaytgan javobni tekshirish
+        let progressData = [];
 
-      if (response && response.data && Array.isArray(response.data)) {
-        progressData = response.data;
-      } else if (response && Array.isArray(response)) {
-        progressData = response;
-      } else if (response && response.success && Array.isArray(response.data)) {
-        progressData = response.data;
-      }
+        if (response && response.data && Array.isArray(response.data)) {
+          progressData = response.data;
+          console.log("Progress data is in response.data array format");
+        } else if (response && Array.isArray(response)) {
+          progressData = response;
+          console.log("Progress data is direct array format");
+        } else if (
+          response &&
+          response.success &&
+          Array.isArray(response.data)
+        ) {
+          progressData = response.data;
+          console.log("Progress data is in response.success.data format");
+        } else {
+          console.error("Unexpected response format:", response);
+        }
 
-      if (progressData.length > 0) {
-        // Extract progress information for lessons
-        const progressMap: {
-          [key: string]: {
-            completedPercentage: number;
-            stageStatus: StageStatus;
-          };
-        } = {};
+        console.log("Progress data lessons count:", progressData.length);
 
-        // Process only lessons that are not locked
-        const unlockedLessons = lessons.filter((id) => id <= currentLesson);
+        if (progressData.length > 0) {
+          // Extract progress information for lessons
+          const progressMap: {
+            [key: string]: {
+              completedPercentage: number;
+              stageStatus: StageStatus;
+            };
+          } = {};
 
-        // Progressni tekshirib olish
-        const levelPrefix = `${numericLevel}-`;
+          // Process only lessons that are not locked
+          const unlockedLessons = lessons.filter((id) => id <= currentLesson);
+          console.log(`Level ${level} - Unlocked lessons:`, unlockedLessons);
 
-        const levelProgressData = progressData.filter((item) => {
-          return item.lessonId && item.lessonId.startsWith(levelPrefix);
-        });
+          // Progressni tekshirib olish
+          const levelPrefix = `${numericLevel}-`;
+          console.log(`Filtering progress for prefix: ${levelPrefix}`);
 
-        // Find corresponding lesson data
-        unlockedLessons.forEach((lessonId) => {
-          const lessonIdWithLevel = `${numericLevel}-${lessonId}`;
-          const lesson = levelProgressData.find(
-            (p) => p.lessonId === lessonIdWithLevel
+          const levelProgressData = progressData.filter((item) => {
+            return item.lessonId && item.lessonId.startsWith(levelPrefix);
+          });
+
+          console.log(
+            `Found ${levelProgressData.length} progress items for level ${level}`
           );
 
-          if (lesson) {
-            // Stage statuslarini aniqlaymiz
-            const stageStatus = {
-              memorize: lesson.stages?.memorize?.completed || false,
-              match: lesson.stages?.match?.completed || false,
-              arrange: lesson.stages?.arrange?.completed || false,
-              write: lesson.stages?.write?.completed || false,
-            };
-
-            // Progress ma'lumotini saqlash
-            progressMap[lessonId] = {
-              completedPercentage: lesson.completedPercentage || 0,
-              stageStatus: stageStatus,
-            };
-
-            // Dars 100% tugallangan bo'lsa, keyingi darsni ochib qo'yish
-            if (lesson.completedPercentage === 100) {
-              // Callback orqali App.tsx ga holatni yuboramiz
-              if (onLessonComplete) {
-                onLessonComplete(lessonId);
-              }
-            }
-          } else {
-            // Agar dars ma'lumoti topilmasa, default qiymatlar
-            progressMap[lessonId] = {
-              completedPercentage: 0,
-              stageStatus: {
-                memorize: false,
-                match: false,
-                arrange: false,
-                write: false,
-              },
-            };
+          if (levelProgressData.length === 0) {
+            console.warn(
+              `No progress data found for level ${level} (prefix ${levelPrefix})`
+            );
           }
-        });
 
-        setLessonsProgress(progressMap);
+          // Find corresponding lesson data
+          unlockedLessons.forEach((lessonId) => {
+            const lessonIdWithLevel = `${numericLevel}-${lessonId}`;
+            const lesson = levelProgressData.find(
+              (p) => p.lessonId === lessonIdWithLevel
+            );
+
+            if (lesson) {
+              console.log(
+                `FOUND Lesson progress for ${lessonIdWithLevel}, progress: ${
+                  lesson.completedPercentage || 0
+                }%`
+              );
+
+              // Stage statuslarini aniqlaymiz
+              const stageStatus = {
+                memorize: lesson.stages?.memorize?.completed || false,
+                match: lesson.stages?.match?.completed || false,
+                arrange: lesson.stages?.arrange?.completed || false,
+                write: lesson.stages?.write?.completed || false,
+              };
+
+              console.log(
+                `Lesson ${lessonIdWithLevel} stage statuses:`,
+                stageStatus
+              );
+
+              // Progress ma'lumotini saqlash
+              progressMap[lessonId] = {
+                completedPercentage: lesson.completedPercentage || 0,
+                stageStatus: stageStatus,
+              };
+
+              // Dars 100% tugallangan bo'lsa, keyingi darsni ochib qo'yish
+              if (lesson.completedPercentage === 100) {
+                console.log(`Lesson ${lessonIdWithLevel} is 100% complete!`);
+                // Callback orqali App.tsx ga holatni yuboramiz
+                if (onLessonComplete) {
+                  onLessonComplete(lessonId);
+                }
+              }
+            } else {
+              console.log(`No progress found for lesson ${lessonIdWithLevel}`);
+              // Agar dars ma'lumoti topilmasa, default qiymatlar
+              progressMap[lessonId] = {
+                completedPercentage: 0,
+                stageStatus: {
+                  memorize: false,
+                  match: false,
+                  arrange: false,
+                  write: false,
+                },
+              };
+            }
+          });
+
+          // State yangilash
+          console.log("Setting progress state with data:", progressMap);
+          setLessonsProgress(progressMap);
+        } else {
+          console.warn("Progress data is empty array");
+        }
+      } catch (apiError) {
+        console.error("API Error in getUserProgress:", apiError);
+        console.error("API Error details:", apiError.message, apiError.stack);
       }
     } catch (error) {
-      console.error("Error loading progress:", error);
+      console.error("General error in loadProgress:", error);
+      console.error("Error details:", error.message, error.stack);
     }
   };
 
