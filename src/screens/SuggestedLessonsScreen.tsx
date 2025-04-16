@@ -9,6 +9,8 @@ type Props = {
   cardTitle: string;
   onStartLesson: (lessonId: number) => void;
   coins: number;
+  currentLesson: number;
+  onLessonComplete: (level: string, lessonId: number) => void;
 };
 
 const SuggestedLessonsScreen: React.FC<Props> = ({
@@ -17,12 +19,14 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
   cardTitle,
   onStartLesson,
   coins,
+  currentLesson,
+  onLessonComplete,
 }) => {
   const handleLessonPress = (lessonId: number) => {
     onStartLesson(lessonId);
   };
 
-    return (
+  return (
     <View style={styles.container}>
       <Header
         title={cardTitle}
@@ -33,10 +37,11 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
         level={cardTitle}
         cardId={cardId}
         title={cardTitle}
-        currentLesson={1}
+        currentLesson={currentLesson}
         onLessonPress={handleLessonPress}
+        onLessonComplete={(lessonId) => onLessonComplete(cardTitle, lessonId)}
       />
-      </View>
+    </View>
   );
 };
 

@@ -60,6 +60,19 @@ const App = () => {
     useState<Word | null>(null);
   const [selectedCardTitle, setSelectedCardTitle] = useState<string>("");
 
+  // Har bir level uchun currentLesson qiymati - bu darslar progressini saqlash uchun
+  // Keylar level nomlari, qiymatlar esa shu level uchun ochilgan eng katta dars raqami
+  const [levelProgress, setLevelProgress] = useState<{ [key: string]: number }>(
+    {
+      Beginner: 1,
+      Elementary: 1,
+      "Pre-Intermediate": 1,
+      Intermediate: 1,
+      "Upper-Intermediate": 1,
+      Advanced: 1,
+    }
+  );
+
   const [fontsLoaded] = useFonts({
     Lexend_400Regular,
   });
@@ -127,6 +140,41 @@ const App = () => {
     setSelectedCardTitle(level);
     setCurrentScreen("SuggestedLessons");
   };
+
+  // Progress 100% bo'lganda, keyingi darsni ochish funksiyasi
+  const unlockNextLesson = useCallback(
+    (level: string, lessonId: number) => {
+      console.log(
+        `Unlocking next lesson for level ${level}, current lesson: ${lessonId}`
+      );
+
+      // Agar hozirgi dars ochilgan eng katta dars bo'lsa, keyingi darsni ochish
+      if (levelProgress[level] === lessonId) {
+        setLevelProgress((prev) => ({
+          ...prev,
+          [level]: lessonId + 1,
+        }));
+
+        // Coins qo'shish
+        addCoins(10);
+
+        // Notification qo'shish
+        const newLessonNotification: Notification = {
+          id: Date.now().toString(),
+          title: "Yangi dars ochildi!",
+          message: `${level} darajasida ${
+            lessonId + 1
+          }-dars uchun ruxsat berildi. +10 tanga qo'shildi!`,
+          type: "lesson",
+          timestamp: new Date(),
+          read: false,
+        };
+
+        setNotifications((prev) => [newLessonNotification, ...prev]);
+      }
+    },
+    [levelProgress, addCoins]
+  );
 
   const handleStartLesson = (lessonId: number) => {
     setSelectedLessonId(lessonId);
@@ -251,6 +299,8 @@ const App = () => {
             cardTitle={selectedCardTitle}
             onStartLesson={handleStartLesson}
             coins={coins}
+            currentLesson={levelProgress[selectedCardTitle] || 1}
+            onLessonComplete={unlockNextLesson}
           />
         );
       default:
