@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
@@ -24,7 +25,7 @@ import NotificationsScreen from "./src/screens/NotificationsScreen";
 import SuggestedLessonsScreen from "./src/screens/SuggestedLessonsScreen";
 
 import { Word, getWordById, getWordsByCardAndLesson } from "./src/data/words";
-import { checkAuth } from "./src/services/api";
+import { checkAuth, logout } from "./src/services/api";
 
 type Lesson = {
   id: string;
@@ -53,7 +54,7 @@ const App = () => {
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<number>(1);
   const [selectedLessonId, setSelectedLessonId] = useState<number>(1);
-  const [isAdmin, setIsAdmin] = useState<boolean>(true);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [coins, setCoins] = useState<number>(100);
   const [selectedDictionaryWord, setSelectedDictionaryWord] =
@@ -89,22 +90,243 @@ const App = () => {
     setNotifications((prev) => [loginNotification, ...prev]);
   };
 
+  const renderScreen = () => {
+    console.log("--- RENDER SCREEN ---");
+    console.log(
+      "Admin state:",
+      isAdmin === true ? "TRUE ADMIN" : "NOT ADMIN",
+      typeof isAdmin
+    );
+    console.log("Current screen:", currentScreen);
+
+    // Auth bo'lmagan holatda login/signup ekranlari
+    if (!isAuthenticated) {
+      if (currentScreen === "SignUp") {
+        return (
+          <SignUpScreen
+            setIsAuthenticated={(value) => {
+              setIsAuthenticated(value);
+              if (value) addLoginNotification();
+            }}
+            setScreen={setCurrentScreen}
+            onLogin={() => setCurrentScreen("Auth")}
+          />
+        );
+      }
+      return (
+        <AuthScreen
+          setIsAuthenticated={(value) => {
+            setIsAuthenticated(value);
+            if (value) addLoginNotification();
+          }}
+          setScreen={setCurrentScreen}
+          onSignUp={() => setCurrentScreen("SignUp")}
+          setIsAdmin={setIsAdmin}
+        />
+      );
+    }
+
+    // HARD OVERRIDE: Admin foydalanuvchi uchun FAQAT admin ekranlarini ko'rsatish
+    if (isAdmin === true) {
+      console.log("ADMIN USER - Only showing admin screens");
+      // Admin faqat Profile ko'rishi mumkin, boshqa barcha holatlarda AdminPanel
+      if (currentScreen === "Profile") {
+        return (
+          <ProfileScreen
+            setScreen={setCurrentScreen}
+            setIsAuthenticated={setIsAuthenticated}
+            isAdmin={true}
+            handleLogout={handleLogout}
+          />
+        );
+      }
+      // Barcha boshqa holatlarda AdminPanel ko'rsatiladi
+      return <AdminPanelScreen setScreen={setCurrentScreen} />;
+    }
+
+    // Regular user ekranlari
+    console.log("REGULAR USER - Showing user interface");
+    switch (currentScreen) {
+      case "Home":
+        return (
+          <HomeScreen
+            setIsAuthenticated={setIsAuthenticated}
+            setScreen={setCurrentScreen}
+            onWordSelect={handleWordSelect}
+            unreadNotificationsCount={
+              notifications.filter((n) => !n.read).length
+            }
+            onCardSelect={handleCardSelect}
+          />
+        );
+      case "MyLessons":
+        return (
+          <LessonsScreen
+            setScreen={setCurrentScreen}
+            onStartGame={handleStartGame}
+          />
+        );
+      case "Courses":
+        return <CreateLessonScreen setScreen={setCurrentScreen} />;
+      case "Dictionary":
+        return (
+          <DictionaryScreen
+            setScreen={setCurrentScreen}
+            selectedWord={selectedDictionaryWord}
+            onWordSelect={handleWordSelect}
+          />
+        );
+      case "Profile":
+        return (
+          <ProfileScreen
+            setScreen={setCurrentScreen}
+            setIsAuthenticated={setIsAuthenticated}
+            isAdmin={isAdmin}
+            handleLogout={handleLogout}
+          />
+        );
+      case "Game":
+        return currentLesson ? (
+          <LessonGameScreen
+            setScreen={setCurrentScreen}
+            lesson={currentLesson}
+          />
+        ) : (
+          <HomeScreen
+            setIsAuthenticated={setIsAuthenticated}
+            setScreen={setCurrentScreen}
+            onWordSelect={handleWordSelect}
+            unreadNotificationsCount={
+              notifications.filter((n) => !n.read).length
+            }
+            onCardSelect={handleCardSelect}
+          />
+        );
+      case "Notifications":
+        return (
+          <NotificationsScreen
+            setScreen={setCurrentScreen}
+            notifications={notifications}
+            markNotificationAsRead={markNotificationAsRead}
+          />
+        );
+      case "SuggestedLessons":
+        return (
+          <SuggestedLessonsScreen
+            setScreen={setCurrentScreen}
+            cardId={selectedCardId}
+            cardTitle={selectedCardTitle}
+            onStartLesson={handleStartLesson}
+            coins={coins}
+            currentLesson={levelProgress[selectedCardTitle] || 1}
+            onLessonComplete={unlockNextLesson}
+          />
+        );
+      default:
+        return (
+          <HomeScreen
+            setIsAuthenticated={setIsAuthenticated}
+            setScreen={setCurrentScreen}
+            onWordSelect={handleWordSelect}
+            unreadNotificationsCount={
+              notifications.filter((n) => !n.read).length
+            }
+            onCardSelect={handleCardSelect}
+          />
+        );
+    }
+  };
+
+  const shouldShowBottomNav = () => {
+    if (!isAuthenticated) return false;
+
+    if (isAdmin) return false;
+
+    return currentScreen !== "Game";
+  };
+
+  // Logout funksiyasini to'g'rilash - to'liq barcha state larni tozalash
+  const handleLogout = useCallback(async () => {
+    console.log("COMPLETE LOGOUT - Clearing all state values");
+    setIsLoading(true);
+
+    try {
+      await logout();
+
+      // To'liq tozalash
+      setCurrentScreen("Auth");
+      setCurrentLesson(null);
+      setSelectedWord(null);
+      setNotifications([]);
+      setSelectedCardId(1);
+      setSelectedLessonId(1);
+      setSelectedDictionaryWord(null);
+      setSelectedCardTitle("");
+
+      // Eng oxirida auth state o'zgartirish
+      setIsAdmin(false);
+      setIsAuthenticated(false);
+
+      console.log("Logout complete");
+    } catch (error) {
+      console.error("Logout error:", error);
+      Alert.alert("Xatolik", "Tizimdan chiqishda xatolik yuz berdi");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Login jarayonida ham state-larni to'g'ri o'rnatish
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
+        console.log("Checking authentication status...");
+        setIsLoading(true);
+
+        // Avval barcha state larni tozalash
+        setCurrentScreen("Auth");
+        setCurrentLesson(null);
+        setSelectedWord(null);
+        setNotifications([]);
+        setSelectedCardId(1);
+        setSelectedLessonId(1);
+        setSelectedDictionaryWord(null);
+        setSelectedCardTitle("");
+        setIsAdmin(false);
+        setIsAuthenticated(false);
+
         const authData = await checkAuth();
+        console.log(
+          "Auth data:",
+          authData ? JSON.stringify(authData) : "No auth data"
+        );
+
         if (authData && authData.user) {
+          // User ma'lumotlarini sozlash
+          const isUserAdmin = authData.user.isAdmin === true;
+          console.log(
+            "User is admin:",
+            isUserAdmin,
+            typeof authData.user.isAdmin
+          );
+
+          // Auth state larni o'rnatish
           setIsAuthenticated(true);
-          setIsAdmin(authData.user.isAdmin || false);
+          setIsAdmin(isUserAdmin);
+
+          // Admin uchun AdminPanel, oddiy foydalanuvchi uchun Home ekranini ko'rsatish
+          const targetScreen = isUserAdmin ? "AdminPanel" : "Home";
+          console.log(`Setting screen to ${targetScreen}`);
+          setCurrentScreen(targetScreen);
+
           addLoginNotification();
         } else {
-          setIsAuthenticated(false);
-          setIsAdmin(false);
+          console.log("Not authenticated, showing Auth screen");
+          setCurrentScreen("Auth");
         }
       } catch (error) {
         console.error("Auth check error:", error);
-        setIsAuthenticated(false);
-        setIsAdmin(false);
+        setCurrentScreen("Auth");
       } finally {
         setIsLoading(false);
       }
@@ -186,142 +408,6 @@ const App = () => {
       words: lessonWords,
     });
     setCurrentScreen("Game");
-  };
-
-  const renderScreen = () => {
-    if (!isAuthenticated) {
-      if (currentScreen === "SignUp") {
-        return (
-          <SignUpScreen
-            setIsAuthenticated={(value) => {
-              setIsAuthenticated(value);
-              if (value) addLoginNotification();
-            }}
-            setScreen={setCurrentScreen}
-            onLogin={() => setCurrentScreen("Auth")}
-          />
-        );
-      }
-      return (
-        <AuthScreen
-          setIsAuthenticated={(value) => {
-            setIsAuthenticated(value);
-            if (value) addLoginNotification();
-          }}
-          setScreen={setCurrentScreen}
-          onSignUp={() => setCurrentScreen("SignUp")}
-        />
-      );
-    }
-
-    switch (currentScreen) {
-      case "Home":
-        return (
-          <HomeScreen
-            setIsAuthenticated={setIsAuthenticated}
-            setScreen={setCurrentScreen}
-            onWordSelect={handleWordSelect}
-            unreadNotificationsCount={
-              notifications.filter((n) => !n.read).length
-            }
-            onCardSelect={handleCardSelect}
-          />
-        );
-      case "MyLessons":
-        return (
-          <LessonsScreen
-            setScreen={setCurrentScreen}
-            onStartGame={handleStartGame}
-          />
-        );
-      case "Courses":
-        return <CreateLessonScreen setScreen={setCurrentScreen} />;
-      case "Dictionary":
-        return (
-          <DictionaryScreen
-            setScreen={setCurrentScreen}
-            selectedWord={selectedDictionaryWord}
-            onWordSelect={handleWordSelect}
-          />
-        );
-      case "Profile":
-        return (
-          <ProfileScreen
-            setScreen={setCurrentScreen}
-            setIsAuthenticated={setIsAuthenticated}
-            isAdmin={isAdmin}
-          />
-        );
-      case "Game":
-        return currentLesson ? (
-          <LessonGameScreen
-            setScreen={setCurrentScreen}
-            lesson={currentLesson}
-          />
-        ) : (
-          <HomeScreen
-            setIsAuthenticated={setIsAuthenticated}
-            setScreen={setCurrentScreen}
-            onWordSelect={handleWordSelect}
-            unreadNotificationsCount={
-              notifications.filter((n) => !n.read).length
-            }
-            onCardSelect={handleCardSelect}
-          />
-        );
-      case "AdminPanel":
-        return isAdmin ? (
-          <AdminPanelScreen setScreen={setCurrentScreen} />
-        ) : (
-          <HomeScreen
-            setIsAuthenticated={setIsAuthenticated}
-            setScreen={setCurrentScreen}
-            onWordSelect={handleWordSelect}
-            unreadNotificationsCount={
-              notifications.filter((n) => !n.read).length
-            }
-            onCardSelect={handleCardSelect}
-          />
-        );
-      case "Notifications":
-        return (
-          <NotificationsScreen
-            setScreen={setCurrentScreen}
-            notifications={notifications}
-            markNotificationAsRead={markNotificationAsRead}
-          />
-        );
-      case "SuggestedLessons":
-        return (
-          <SuggestedLessonsScreen
-            setScreen={setCurrentScreen}
-            cardId={selectedCardId}
-            cardTitle={selectedCardTitle}
-            onStartLesson={handleStartLesson}
-            coins={coins}
-            currentLesson={levelProgress[selectedCardTitle] || 1}
-            onLessonComplete={unlockNextLesson}
-          />
-        );
-      default:
-        return (
-          <HomeScreen
-            setIsAuthenticated={setIsAuthenticated}
-            setScreen={setCurrentScreen}
-            onWordSelect={handleWordSelect}
-            unreadNotificationsCount={
-              notifications.filter((n) => !n.read).length
-            }
-            onCardSelect={handleCardSelect}
-          />
-        );
-    }
-  };
-
-  const shouldShowBottomNav = () => {
-    return (
-      isAuthenticated && currentScreen !== "Auth" && currentScreen !== "SignUp"
-    );
   };
 
   if (!fontsLoaded) {

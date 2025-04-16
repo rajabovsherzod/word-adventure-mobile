@@ -24,12 +24,14 @@ type Props = {
   setScreen: (screen: string) => void;
   setIsAuthenticated: (value: boolean) => void;
   isAdmin?: boolean;
+  handleLogout?: () => void;
 };
 
 const ProfileScreen: React.FC<Props> = ({
   setScreen,
   setIsAuthenticated,
   isAdmin,
+  handleLogout,
 }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
@@ -60,13 +62,18 @@ const ProfileScreen: React.FC<Props> = ({
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error("Logout error:", error);
-      Alert.alert("Xatolik", "Tizimdan chiqishda xatolik yuz berdi");
+  const handleLogoutClick = async () => {
+    if (handleLogout) {
+      console.log("Using global logout function");
+      handleLogout();
+    } else {
+      try {
+        await logout();
+        setIsAuthenticated(false);
+      } catch (error) {
+        console.error("Logout error:", error);
+        Alert.alert("Xatolik", "Tizimdan chiqishda xatolik yuz berdi");
+      }
     }
   };
 
@@ -156,7 +163,10 @@ const ProfileScreen: React.FC<Props> = ({
         {isAdmin && (
           <TouchableOpacity
             style={styles.adminButton}
-            onPress={() => setScreen("AdminPanel")}
+            onPress={() => {
+              console.log("Admin Panel button pressed, isAdmin:", isAdmin);
+              setScreen("AdminPanel");
+            }}
           >
             <FontAwesome5 name="user-shield" size={20} color="#fff" />
             <Text style={styles.adminButtonText}>Admin Panel</Text>
@@ -177,7 +187,10 @@ const ProfileScreen: React.FC<Props> = ({
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogoutClick}
+        >
           <FontAwesome5 name="sign-out-alt" size={20} color="#FF3B30" />
           <Text style={styles.logoutText}>Chiqish</Text>
         </TouchableOpacity>

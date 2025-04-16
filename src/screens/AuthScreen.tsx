@@ -22,12 +22,14 @@ type Props = {
   onSignUp: () => void;
   setIsAuthenticated: (value: boolean) => void;
   setScreen: (screen: string) => void;
+  setIsAdmin?: (value: boolean) => void;
 };
 
 const AuthScreen: React.FC<Props> = ({
   onSignUp,
   setIsAuthenticated,
   setScreen,
+  setIsAdmin,
 }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,10 +44,35 @@ const AuthScreen: React.FC<Props> = ({
     try {
       setLoading(true);
       console.log("Login so'rovi yuborilmoqda...");
-      const { user } = await login(email, password);
-      console.log("Login muvaffaqiyatli:", user);
-      setIsAuthenticated(true);
-      setScreen("Home");
+      console.log("Email:", email);
+
+      const response = await login(email, password);
+      console.log("Login muvaffaqiyatli:", JSON.stringify(response));
+
+      if (response && response.user) {
+        const isUserAdmin = response.user.isAdmin === true;
+        console.log(
+          "User is admin:",
+          isUserAdmin,
+          typeof response.user.isAdmin
+        );
+
+        if (setIsAdmin) {
+          console.log("Setting admin state to:", isUserAdmin);
+          setIsAdmin(isUserAdmin);
+        } else {
+          console.warn("setIsAdmin function is not provided");
+        }
+
+        setIsAuthenticated(true);
+
+        const targetScreen = isUserAdmin ? "AdminPanel" : "Home";
+        console.log(`Redirecting to ${targetScreen} screen`);
+        setScreen(targetScreen);
+      } else {
+        console.error("Login javobi to'g'ri strukturada emas:", response);
+        Alert.alert("Xatolik", "Tizimga kirishda muammo yuz berdi");
+      }
     } catch (error: any) {
       console.error("Login xatosi:", error);
       console.error("Xatolik tafsilotlari:", error.response?.data);

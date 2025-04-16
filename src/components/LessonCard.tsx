@@ -320,10 +320,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: "rgba(238, 241, 255, 0.5)", // 50% opacity
+    borderColor: "#D0D5FF",
   },
   completedStageIcon: {
     backgroundColor: "#4CAF50",
+    borderWidth: 0,
   },
   stageIcon: {
     opacity: 1,

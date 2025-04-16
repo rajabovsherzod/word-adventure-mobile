@@ -6,7 +6,7 @@ import { Platform } from "react-native";
 let BASE_URL = "";
 
 // IP manzili - kompyuteringizning haqiqiy IP manzili
-const SERVER_IP = "172.20.10.5";
+const SERVER_IP = "172.20.10.2";
 
 // Set axios defaults
 if (Platform.OS === "android") {
@@ -53,7 +53,9 @@ api.interceptors.request.use(
       const token = await AsyncStorage.getItem("token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log("API Request Token:", token);
+        console.log("API Request with Token");
+      } else {
+        console.log("API Request without Token");
       }
       return config;
     } catch (error) {
@@ -142,18 +144,40 @@ export const login = async (email: string, password: string) => {
     console.log("API: Email:", email);
 
     const response = await api.post("/auth/login", { email, password });
-    console.log("API: Login javobi:", response.data);
+    console.log("API: Login javobi:", JSON.stringify(response.data));
 
     const { token, user } = response.data;
 
     if (token && user) {
       console.log("API: Token va foydalanuvchi ma'lumotlari saqlanmoqda");
+      // Avval AsyncStorage tozalash
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+
+      // isAdmin qiymatini ANIQ boolean ga o'girish
+      const isAdminValue = user.isAdmin === true;
+      console.log("API: isAdmin qiymati:", isAdminValue, typeof isAdminValue);
+
+      // User obyektini yangilash
+      const updatedUser = {
+        ...user,
+        isAdmin: isAdminValue,
+      };
+
+      // Yangi ma'lumotlarni saqlash
       await AsyncStorage.setItem("token", token);
-      await AsyncStorage.setItem("user", JSON.stringify(user));
+      await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+
+      // To'liq javob strukturasini log qilish
+      console.log(
+        "API: User is admin:",
+        updatedUser.isAdmin,
+        typeof updatedUser.isAdmin
+      );
 
       return {
         token,
-        user,
+        user: updatedUser,
       };
     } else {
       console.error("API: Token yoki foydalanuvchi ma'lumotlari topilmadi");
@@ -167,8 +191,31 @@ export const login = async (email: string, password: string) => {
 };
 
 export const logout = async () => {
-  await AsyncStorage.removeItem("token");
-  await AsyncStorage.removeItem("user");
+  console.log("API: Logging out...");
+  try {
+    // Token va foydalanuvchi ma'lumotlarini o'chirish
+    await AsyncStorage.removeItem("token");
+    await AsyncStorage.removeItem("user");
+
+    // Qo'shimcha keshlarni tozalash
+    await AsyncStorage.getAllKeys().then((keys) => {
+      // Progress va progress-related keys o'chirish
+      const keysToRemove = keys.filter(
+        (key) =>
+          key.startsWith("progress_") ||
+          key.startsWith("learned_words_") ||
+          key.startsWith("lesson_")
+      );
+      if (keysToRemove.length > 0) {
+        console.log("API: Clearing cached data:", keysToRemove);
+        AsyncStorage.multiRemove(keysToRemove);
+      }
+    });
+
+    console.log("API: Successfully logged out");
+  } catch (error) {
+    console.error("API: Error during logout:", error);
+  }
 };
 
 export const getMe = async () => {
@@ -178,20 +225,53 @@ export const getMe = async () => {
 
 export const checkAuth = async () => {
   try {
+    console.log("API: Checking authentication...");
     const token = await AsyncStorage.getItem("token");
-    if (!token) return null;
 
+    if (!token) {
+      console.log("API: No token found");
+      return null;
+    }
+
+    console.log("API: Token found, checking validity");
     const response = await api.get("/auth/me");
-    const user = response.data;
+    console.log("API: Auth check response:", response.status);
+
+    const userData = response.data.user;
+    console.log(
+      "API: User data:",
+      userData ? JSON.stringify(userData) : "No user data"
+    );
+
+    if (!userData) {
+      console.log("API: User data missing in response");
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+      return null;
+    }
+
+    // isAdmin qiymatini boolean qiymatga majburiy o'girish
+    if (userData.isAdmin !== undefined) {
+      userData.isAdmin = userData.isAdmin === true;
+    }
 
     // Store updated user data
-    await AsyncStorage.setItem("user", JSON.stringify(user));
+    await AsyncStorage.setItem("user", JSON.stringify(userData));
+    console.log(
+      "API: User is admin:",
+      userData.isAdmin,
+      typeof userData.isAdmin
+    );
 
     return {
-      user,
+      user: {
+        ...userData,
+        isAdmin: userData.isAdmin === true,
+      },
       token,
     };
   } catch (error) {
+    console.error("API: CheckAuth error:", error);
     await AsyncStorage.removeItem("token");
     await AsyncStorage.removeItem("user");
     return null;
@@ -200,8 +280,24 @@ export const checkAuth = async () => {
 
 // Admin endpoints
 export const getAllUsers = async () => {
-  const response = await api.get("/users");
-  return response.data;
+  try {
+    console.log("API: Getting all users");
+    const response = await api.get("/users");
+    console.log("API: Get all users response:", response.data);
+
+    if (response.data) {
+      return response.data;
+    } else {
+      console.error("API: Empty response from server for getAllUsers");
+      return [];
+    }
+  } catch (error) {
+    console.error("API: Error getting all users:", error);
+    if (error instanceof Error) {
+      console.error("API: Error message:", error.message);
+    }
+    throw error;
+  }
 };
 
 export const getUserById = async (id: string) => {

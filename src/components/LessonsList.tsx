@@ -203,7 +203,7 @@ const LessonsList: React.FC<LessonsListProps> = ({
           console.log("Setting progress state with data:", progressMap);
           setLessonsProgress(progressMap);
         } else {
-          console.warn("Progress data is empty array");
+          // Ogohlantirishni olib tashlaymiz
         }
       } catch (apiError) {
         console.error("API Error in getUserProgress:", apiError);
