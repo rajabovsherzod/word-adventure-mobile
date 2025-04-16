@@ -319,6 +319,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
+    borderWidth: 1,
+    borderColor: "rgba(238, 241, 255, 0.5)", // 50% opacity
   },
   completedStageIcon: {
     backgroundColor: "#4CAF50",
