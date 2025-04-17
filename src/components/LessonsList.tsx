@@ -137,11 +137,7 @@ const LessonsList: React.FC<LessonsListProps> = ({
             `Found ${levelProgressData.length} progress items for level ${level}`
           );
 
-          if (levelProgressData.length === 0) {
-            console.warn(
-              `No progress data found for level ${level} (prefix ${levelPrefix})`
-            );
-          }
+          // Yangi foydalanuvchilar uchun progress bo'lmasligi tabiiy hol
 
           // Find corresponding lesson data
           unlockedLessons.forEach((lessonId) => {

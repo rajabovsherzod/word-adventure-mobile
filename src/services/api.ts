@@ -6,7 +6,7 @@ import { Platform } from "react-native";
 let BASE_URL = "";
 
 // IP manzili - kompyuteringizning haqiqiy IP manzili
-const SERVER_IP = "172.20.10.2";
+const SERVER_IP = "192.168.1.40";
 
 // Set axios defaults
 if (Platform.OS === "android") {

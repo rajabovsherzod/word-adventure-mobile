@@ -340,7 +340,11 @@ const AdminPanelScreen: React.FC<Props> = ({ setScreen }) => {
               </View>
 
               {users.length > 0 ? (
-                users.map((user) => renderUser({ item: user }))
+                users.map((user) => (
+                  <React.Fragment key={user._id}>
+                    {renderUser({ item: user })}
+                  </React.Fragment>
+                ))
               ) : (
                 <View style={styles.emptyState}>
                   <FontAwesome5 name="users-slash" size={50} color="#DDD" />
