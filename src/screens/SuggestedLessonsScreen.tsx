@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Text } from "react-native";
+import { View, StyleSheet } from "react-native";
 import Header from "../components/Header";
 import LessonsList from "../components/LessonsList";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
 
 type Props = {
   setScreen: (screen: string) => void;
@@ -25,7 +24,6 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
   onLessonComplete,
 }) => {
   const [userCoins, setUserCoins] = useState<number>(coins || 0);
-  let [fontsLoaded] = useFonts({ Lexend_400Regular });
 
   // Foydalanuvchi coins qiymatini AsyncStorage'dan olish
   useEffect(() => {
@@ -49,10 +47,6 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
   const handleLessonPress = (lessonId: number) => {
     onStartLesson(lessonId);
   };
-
-  if (!fontsLoaded) {
-    return null;
-  }
 
   return (
     <View style={styles.container}>

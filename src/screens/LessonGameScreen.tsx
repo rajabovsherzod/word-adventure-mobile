@@ -170,23 +170,23 @@ const MemorizeStage = ({
   };
 
   return (
-    <View style={styles.gameContent}>
-      <Text style={styles.englishWord}>{word.english}</Text>
-      <View style={styles.optionsContainer}>
-        {options.map((option, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
+  <View style={styles.gameContent}>
+    <Text style={styles.englishWord}>{word.english}</Text>
+    <View style={styles.optionsContainer}>
+      {options.map((option, index) => (
+        <TouchableOpacity
+          key={index}
+          style={[
               ...getOptionStyle(option),
-              index % 2 === 0 ? { marginRight: 10 } : {},
-            ]}
+            index % 2 === 0 ? { marginRight: 10 } : {},
+          ]}
             onPress={() => !selectedOption && onSelect(option)}
             disabled={selectedOption !== null}
-          >
+        >
             <Text style={getTextStyle(option)}>{option}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+        </TouchableOpacity>
+      ))}
+    </View>
 
       <TouchableOpacity
         style={[
@@ -205,8 +205,8 @@ const MemorizeStage = ({
           Keyingi
         </Text>
       </TouchableOpacity>
-    </View>
-  );
+  </View>
+);
 };
 
 // Match Stage Component
@@ -987,29 +987,29 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     const availableWords = words.slice(0, MAX_WORDS_PER_LESSON);
     const currentWord = availableWords[gameState.currentWordIndex];
 
-    setGameState((prev) => {
-      const newState = {
-        ...prev,
+      setGameState((prev) => {
+        const newState = {
+          ...prev,
         selectedOption: null,
         completedWords: [
           ...prev.completedWords,
           availableWords[prev.currentWordIndex].id,
         ],
-      };
+        };
 
-      if (prev.currentWordIndex < availableWords.length - 1) {
-        return {
-          ...newState,
-          currentWordIndex: prev.currentWordIndex + 1,
-        };
-      } else {
-        return {
-          ...newState,
-          currentStage: "stages",
-          currentWordIndex: 0,
-        };
-      }
-    });
+        if (prev.currentWordIndex < availableWords.length - 1) {
+          return {
+            ...newState,
+            currentWordIndex: prev.currentWordIndex + 1,
+          };
+        } else {
+          return {
+            ...newState,
+            currentStage: "stages",
+            currentWordIndex: 0,
+          };
+        }
+      });
   };
 
   const handleMatchStage = (english: string, uzbek: string) => {
@@ -1181,123 +1181,123 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     const totalWords = availableWords.length;
 
     return (
-      <ScrollView style={styles.stagesContainer}>
-        <View style={styles.stageCards}>
-          <TouchableOpacity
-            style={styles.stageCard}
-            onPress={() => handleStageSelect("memorize")}
-          >
-            <View style={styles.stageHeader}>
-              <View style={styles.stageIcon}>
-                <FontAwesome5 name="brain" size={20} color="#3C5BFF" />
-              </View>
-              <View style={styles.stageInfo}>
-                <Text style={styles.stageName}>So'zlarni yodlash</Text>
-              </View>
-              <View style={styles.stageScore}>
+    <ScrollView style={styles.stagesContainer}>
+      <View style={styles.stageCards}>
+        <TouchableOpacity
+          style={styles.stageCard}
+          onPress={() => handleStageSelect("memorize")}
+        >
+          <View style={styles.stageHeader}>
+            <View style={styles.stageIcon}>
+              <FontAwesome5 name="brain" size={20} color="#3C5BFF" />
+            </View>
+            <View style={styles.stageInfo}>
+              <Text style={styles.stageName}>So'zlarni yodlash</Text>
+            </View>
+            <View style={styles.stageScore}>
                 {gameState.stageProgress.memorize.completed ? (
-                  <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
-                ) : (
-                  <Text style={styles.stageScoreText}>
+                <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
+              ) : (
+                <Text style={styles.stageScoreText}>
                     {gameState.stageProgress.memorize.completedWords.length}/
                     {totalWords}
-                  </Text>
-                )}
-              </View>
+                </Text>
+              )}
             </View>
-          </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.stageCard}
-            onPress={() => handleStageSelect("match")}
-          >
-            <View style={styles.stageHeader}>
-              <View style={styles.stageIcon}>
-                <FontAwesome5 name="exchange-alt" size={20} color="#3C5BFF" />
-              </View>
-              <View style={styles.stageInfo}>
-                <Text style={styles.stageName}>So'zlarni takrorlash</Text>
-              </View>
-              <View style={styles.stageScore}>
+        <TouchableOpacity
+          style={styles.stageCard}
+          onPress={() => handleStageSelect("match")}
+        >
+          <View style={styles.stageHeader}>
+            <View style={styles.stageIcon}>
+              <FontAwesome5 name="exchange-alt" size={20} color="#3C5BFF" />
+            </View>
+            <View style={styles.stageInfo}>
+              <Text style={styles.stageName}>So'zlarni takrorlash</Text>
+            </View>
+            <View style={styles.stageScore}>
                 {gameState.stageProgress.match.completed ? (
-                  <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
-                ) : (
-                  <Text style={styles.stageScoreText}>
+                <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
+              ) : (
+                <Text style={styles.stageScoreText}>
                     {Math.floor(gameState.stageProgress.match.progress / 10)}/
                     {totalWords}
-                  </Text>
-                )}
-              </View>
+                </Text>
+              )}
             </View>
-          </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.stageCard}
-            onPress={() => handleStageSelect("arrange")}
-          >
-            <View style={styles.stageHeader}>
-              <View style={styles.stageIcon}>
+        <TouchableOpacity
+          style={styles.stageCard}
+          onPress={() => handleStageSelect("arrange")}
+        >
+          <View style={styles.stageHeader}>
+            <View style={styles.stageIcon}>
                 <FontAwesome5
                   name="sort-alpha-down"
                   size={20}
                   color="#3C5BFF"
                 />
-              </View>
-              <View style={styles.stageInfo}>
-                <Text style={styles.stageName}>So'zlarni mustahkamlash</Text>
-              </View>
-              <View style={styles.stageScore}>
+            </View>
+            <View style={styles.stageInfo}>
+              <Text style={styles.stageName}>So'zlarni mustahkamlash</Text>
+            </View>
+            <View style={styles.stageScore}>
                 {gameState.stageProgress.arrange.completed ? (
-                  <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
-                ) : (
-                  <Text style={styles.stageScoreText}>
+                <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
+              ) : (
+                <Text style={styles.stageScoreText}>
                     {gameState.stageProgress.arrange.completedWords.length}/
                     {totalWords}
-                  </Text>
-                )}
-              </View>
+                </Text>
+              )}
             </View>
-          </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.stageCard}
-            onPress={() => handleStageSelect("write")}
-          >
-            <View style={styles.stageHeader}>
-              <View style={styles.stageIcon}>
-                <FontAwesome5 name="pencil-alt" size={20} color="#3C5BFF" />
-              </View>
-              <View style={styles.stageInfo}>
-                <Text style={styles.stageName}>So'zlarni yozish</Text>
-              </View>
-              <View style={styles.stageScore}>
+        <TouchableOpacity
+          style={styles.stageCard}
+          onPress={() => handleStageSelect("write")}
+        >
+          <View style={styles.stageHeader}>
+            <View style={styles.stageIcon}>
+              <FontAwesome5 name="pencil-alt" size={20} color="#3C5BFF" />
+            </View>
+            <View style={styles.stageInfo}>
+              <Text style={styles.stageName}>So'zlarni yozish</Text>
+            </View>
+            <View style={styles.stageScore}>
                 {gameState.stageProgress.write.completed ? (
-                  <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
-                ) : (
-                  <Text style={styles.stageScoreText}>
+                <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
+              ) : (
+                <Text style={styles.stageScoreText}>
                     {gameState.stageProgress.write.completedWords.length}/
                     {totalWords}
-                  </Text>
-                )}
-              </View>
+                </Text>
+              )}
             </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.wordsSection}>
-          <Text style={styles.wordsSectionTitle}>O'rganiladigan so'zlar</Text>
-          <View style={styles.wordsList}>
-            {words.slice(0, MAX_WORDS_PER_LESSON).map((word, index) => (
-              <View key={word.id} style={styles.wordItem}>
-                <Text style={styles.wordNumber}>{index + 1}.</Text>
-                <Text style={styles.wordEnglish}>{word.english}</Text>
-                <Text style={styles.wordUzbek}>{word.uzbek}</Text>
-              </View>
-            ))}
           </View>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.wordsSection}>
+        <Text style={styles.wordsSectionTitle}>O'rganiladigan so'zlar</Text>
+        <View style={styles.wordsList}>
+          {words.slice(0, MAX_WORDS_PER_LESSON).map((word, index) => (
+            <View key={word.id} style={styles.wordItem}>
+              <Text style={styles.wordNumber}>{index + 1}.</Text>
+              <Text style={styles.wordEnglish}>{word.english}</Text>
+              <Text style={styles.wordUzbek}>{word.uzbek}</Text>
+            </View>
+          ))}
         </View>
-      </ScrollView>
-    );
+      </View>
+    </ScrollView>
+  );
   };
 
   const renderGameStage = () => {
@@ -1392,36 +1392,36 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
         translucent={true}
       />
       <View style={styles.headerContainer}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() =>
-              gameState.currentStage === "stages"
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() =>
+            gameState.currentStage === "stages"
                 ? setScreen("SuggestedLessons")
-                : setGameState((prev) => ({ ...prev, currentStage: "stages" }))
-            }
-          >
-            <FontAwesome5
+              : setGameState((prev) => ({ ...prev, currentStage: "stages" }))
+          }
+        >
+          <FontAwesome5
               name={
                 gameState.currentStage === "stages" ? "arrow-left" : "times"
               }
-              size={20}
-              color="white"
-            />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{lesson.name}</Text>
-          <View style={styles.scoreContainer}>
-            <Text style={styles.scoreText}>
-              {gameState.currentStage === "stages"
+            size={20}
+            color="white"
+          />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{lesson.name}</Text>
+        <View style={styles.scoreContainer}>
+          <Text style={styles.scoreText}>
+            {gameState.currentStage === "stages"
                 ? `${progress()}%`
-                : `${gameState.currentWordIndex + 1}/${Math.min(
-                    words.length,
-                    MAX_WORDS_PER_LESSON
-                  )}`}
-            </Text>
-          </View>
+              : `${gameState.currentWordIndex + 1}/${Math.min(
+                  words.length,
+                  MAX_WORDS_PER_LESSON
+                )}`}
+          </Text>
         </View>
-        <View style={styles.progressBarContainer}>
+      </View>
+      <View style={styles.progressBarContainer}>
           <View style={[styles.progressBar, { width: `${progress()}%` }]} />
         </View>
       </View>

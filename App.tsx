@@ -54,6 +54,7 @@ const App = () => {
   const [currentScreen, setCurrentScreen] = useState<string>("Home");
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<number>(1);
@@ -164,6 +165,7 @@ const App = () => {
               notifications.filter((n) => !n.read).length
             }
             onCardSelect={handleCardSelect}
+            onSearchStateChange={setIsSearchOpen}
           />
         );
       case "MyLessons":
@@ -275,6 +277,8 @@ const App = () => {
     if (!isAuthenticated) return false;
 
     if (isAdmin) return false;
+
+    if (isSearchOpen) return false;
 
     // LessonContentScreen, SuggestedLessons va Game sahifalari uchun bottom navigatsiyani ko'rsatmaslik
     return (

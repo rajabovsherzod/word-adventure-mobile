@@ -38,6 +38,7 @@ type Props = {
   onWordSelect: (word: Word) => void;
   unreadNotificationsCount: number;
   onCardSelect: (cardId: number, level: string) => void;
+  onSearchStateChange?: (isOpen: boolean) => void;
 };
 
 // Dars tugatilganligini tekshirish
@@ -57,6 +58,7 @@ const HomeScreen: React.FC<Props> = ({
   onWordSelect,
   unreadNotificationsCount,
   onCardSelect,
+  onSearchStateChange,
 }) => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -159,6 +161,7 @@ const HomeScreen: React.FC<Props> = ({
 
   const handleSearchPress = () => {
     setIsSearchFocused(true);
+    onSearchStateChange?.(true);
     Animated.spring(searchAnim, {
       toValue: 1,
       useNativeDriver: true,
@@ -169,6 +172,7 @@ const HomeScreen: React.FC<Props> = ({
 
   const handleCloseSearch = () => {
     Keyboard.dismiss();
+    onSearchStateChange?.(false);
     Animated.spring(searchAnim, {
       toValue: 0,
       useNativeDriver: true,
@@ -533,8 +537,6 @@ const HomeScreen: React.FC<Props> = ({
           </View>
         </Animated.ScrollView>
 
-        {/* Bottom Navigation */}
-
         {/* Sliding Search Panel */}
         <Animated.View
           style={[
@@ -722,15 +724,16 @@ const styles = StyleSheet.create({
   },
   searchPanel: {
     position: "absolute",
-    top: STATUSBAR_HEIGHT,
+    top: 0,
     left: 0,
     right: 0,
-    height: height - STATUSBAR_HEIGHT,
+    bottom: 0,
     backgroundColor: "white",
-    zIndex: 1000,
+    zIndex: 1001,
   },
   searchPanelContent: {
-    paddingTop: STATUSBAR_HEIGHT + 10,
+    flex: 1,
+    paddingTop: STATUSBAR_HEIGHT + 30,
     paddingHorizontal: 20,
   },
   searchInputWrapper: {
@@ -741,6 +744,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E0E0",
     paddingHorizontal: 15,
+    paddingVertical: 10,
     height: 50,
     shadowColor: "rgba(60, 91, 255, 0.08)",
     shadowOffset: {
@@ -772,6 +776,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 5,
+    zIndex: 1000,
   },
   navItem: {
     flex: 1,
