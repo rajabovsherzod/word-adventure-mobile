@@ -498,6 +498,12 @@ const WriteStage = ({
 };
 
 const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
+  const [userCoins, setUserCoins] = useState<number>(0);
+  const [lessonCompleted, setLessonCompleted] = useState<boolean>(false);
+  const [words] = useState<Word[]>(
+    lesson.words.length > 0 ? lesson.words : MOCK_WORDS
+  );
+  const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
   const [gameState, setGameState] = useState<GameState>({
     currentStage: "stages",
     currentWordIndex: 0,
@@ -532,11 +538,144 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     },
   });
 
-  const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
   let [fontsLoaded] = useFonts({ Lexend_400Regular });
 
-  // Use MOCK_WORDS if lesson.words is empty
-  const words = lesson.words.length > 0 ? lesson.words : MOCK_WORDS;
+  // Calculate progress
+  const progress = useCallback(() => {
+    const total = 4; // 4 stages
+    let completed = 0;
+
+    if (gameState.stageProgress.memorize.completed) completed++;
+    if (gameState.stageProgress.match.completed) completed++;
+    if (gameState.stageProgress.arrange.completed) completed++;
+    if (gameState.stageProgress.write.completed) completed++;
+
+    return Math.round((completed / total) * 100);
+  }, [gameState.stageProgress]);
+
+  // Check if all stages are completed
+  const allStagesCompleted =
+    gameState.stageProgress.memorize.completed &&
+    gameState.stageProgress.match.completed &&
+    gameState.stageProgress.arrange.completed &&
+    gameState.stageProgress.write.completed;
+
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const userDataStr = await AsyncStorage.getItem("user");
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          setUserCoins(userData.coins || 0);
+        }
+      } catch (error) {
+        console.error("Error loading user data:", error);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
+  // Check if the lesson has been previously completed
+  useEffect(() => {
+    const checkLessonCompletion = async () => {
+      try {
+        const completedLessonsStr = await AsyncStorage.getItem(
+          "completedLessons"
+        );
+        const completedLessons = completedLessonsStr
+          ? JSON.parse(completedLessonsStr)
+          : [];
+
+        // Lesson ID format should match what's stored
+        const formattedLessonId = formatLessonId(lesson);
+        setLessonCompleted(completedLessons.includes(formattedLessonId));
+      } catch (error) {
+        console.error("Error checking lesson completion:", error);
+      }
+    };
+
+    checkLessonCompletion();
+  }, [lesson]);
+
+  // Handle lesson completion and award coins only the first time
+  useEffect(() => {
+    if (allStagesCompleted && !lessonCompleted) {
+      const markLessonAsCompleted = async () => {
+        try {
+          // Update user coins
+          await updateUserCoins(10);
+
+          // Mark this lesson as completed
+          const formattedLessonId = formatLessonId(lesson);
+          const completedLessonsStr = await AsyncStorage.getItem(
+            "completedLessons"
+          );
+          const completedLessons = completedLessonsStr
+            ? JSON.parse(completedLessonsStr)
+            : [];
+
+          if (!completedLessons.includes(formattedLessonId)) {
+            completedLessons.push(formattedLessonId);
+            await AsyncStorage.setItem(
+              "completedLessons",
+              JSON.stringify(completedLessons)
+            );
+            setLessonCompleted(true);
+
+            // Show success alert
+            Alert.alert(
+              "Ajoyib!",
+              "Dars muvaffaqiyatli tugatildi!",
+              [
+                {
+                  text: "OK",
+                  onPress: () => setScreen("SuggestedLessons"),
+                  style: "default",
+                },
+              ],
+              {
+                cancelable: false,
+                // Custom styling is not directly supported in Alert.alert,
+                // but you can inform the user about the coins in the message
+              }
+            );
+          }
+        } catch (error) {
+          console.error("Error marking lesson as completed:", error);
+        }
+      };
+
+      markLessonAsCompleted();
+    }
+  }, [allStagesCompleted, lessonCompleted, lesson, setScreen]);
+
+  // Function to update user coins
+  const updateUserCoins = async (amount: number) => {
+    try {
+      // Get current user data
+      const userDataStr = await AsyncStorage.getItem("user");
+      if (!userDataStr) return;
+
+      const userData = JSON.parse(userDataStr);
+      const currentCoins = userData.coins || 0;
+      const newCoins = currentCoins + amount;
+
+      // Update local state
+      setUserCoins(newCoins);
+
+      // Update AsyncStorage
+      userData.coins = newCoins;
+      await AsyncStorage.setItem("user", JSON.stringify(userData));
+
+      console.log(
+        `User coins updated: ${currentCoins} -> ${newCoins} (+${amount})`
+      );
+    } catch (error) {
+      console.error("Error updating user coins:", error);
+    }
+  };
 
   useEffect(() => {
     const initialize = async () => {
@@ -1245,67 +1384,46 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     return null;
   }
 
-  // Progress bar uchun qiymatni qaytaradi
-  const getProgressPercentage = () => {
-    // O'yin bosqichida - joriy so'z indeksiga qarab progress
-    if (gameState.currentStage !== "stages") {
-      return Math.floor(
-        ((gameState.currentWordIndex + 1) /
-          Math.min(words.length, MAX_WORDS_PER_LESSON)) *
-          100
-      );
-    }
-
-    // Stages ekranida - backend tomondan olingan qiymatdan foydalanish
-    if (gameState.overallProgress !== undefined) {
-      return gameState.overallProgress;
-    }
-
-    // Backenddan qiymat yo'q bo'lsa - frontend hisoblab beradi
-    return Math.floor(
-      ((gameState.stageProgress.memorize.completedWords.length +
-        Math.floor(gameState.stageProgress.match.progress / 10) +
-        gameState.stageProgress.arrange.completedWords.length +
-        gameState.stageProgress.write.completedWords.length) /
-        (MAX_WORDS_PER_LESSON * 4)) *
-        100
-    );
-  };
-
-  const progress = getProgressPercentage();
-
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() =>
-            gameState.currentStage === "stages"
-              ? setScreen("Lessons")
-              : setGameState((prev) => ({ ...prev, currentStage: "stages" }))
-          }
-        >
-          <FontAwesome5
-            name={gameState.currentStage === "stages" ? "arrow-left" : "times"}
-            size={20}
-            color="white"
-          />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{lesson.name}</Text>
-        <View style={styles.scoreContainer}>
-          <Text style={styles.scoreText}>
-            {gameState.currentStage === "stages"
-              ? `${progress}%`
-              : `${gameState.currentWordIndex + 1}/${Math.min(
-                  words.length,
-                  MAX_WORDS_PER_LESSON
-                )}`}
-          </Text>
+      <StatusBar
+        backgroundColor="#3C5BFF"
+        barStyle="light-content"
+        translucent={true}
+      />
+      <View style={styles.headerContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() =>
+              gameState.currentStage === "stages"
+                ? setScreen("SuggestedLessons")
+                : setGameState((prev) => ({ ...prev, currentStage: "stages" }))
+            }
+          >
+            <FontAwesome5
+              name={
+                gameState.currentStage === "stages" ? "arrow-left" : "times"
+              }
+              size={20}
+              color="white"
+            />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{lesson.name}</Text>
+          <View style={styles.scoreContainer}>
+            <Text style={styles.scoreText}>
+              {gameState.currentStage === "stages"
+                ? `${progress()}%`
+                : `${gameState.currentWordIndex + 1}/${Math.min(
+                    words.length,
+                    MAX_WORDS_PER_LESSON
+                  )}`}
+            </Text>
+          </View>
         </View>
-      </View>
-
-      <View style={styles.progressBarContainer}>
-        <View style={[styles.progressBar, { width: `${progress}%` }]} />
+        <View style={styles.progressBarContainer}>
+          <View style={[styles.progressBar, { width: `${progress()}%` }]} />
+        </View>
       </View>
 
       {renderGameStage()}
@@ -1318,31 +1436,53 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "white",
   },
-  header: {
+  headerContainer: {
     backgroundColor: "#3C5BFF",
-    paddingTop: STATUSBAR_HEIGHT + 10,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingTop: STATUSBAR_HEIGHT,
+    paddingBottom: 0,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: "#3C5BFF",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    zIndex: 1,
+    overflow: "hidden",
+  },
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingTop: 15,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
   },
   backButton: {
     padding: 5,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
     color: "white",
-    fontSize: 20,
+    fontSize: 17,
     fontFamily: "Lexend_400Regular",
     flex: 1,
     textAlign: "center",
     marginHorizontal: 10,
   },
   scoreContainer: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 25,
   },
   scoreText: {
     color: "white",
@@ -1353,6 +1493,8 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: "#F0F0F0",
     width: "100%",
+    marginTop: 0,
+    zIndex: 3,
   },
   progressBar: {
     height: "100%",

@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet } from "react-native";
 import Header from "../components/Header";
 import LessonsList from "../components/LessonsList";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Props = {
   setScreen: (screen: string) => void;
@@ -22,16 +23,37 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
   currentLesson,
   onLessonComplete,
 }) => {
+  const [userCoins, setUserCoins] = useState<number>(coins || 0);
+
+  // Foydalanuvchi coins qiymatini AsyncStorage'dan olish
+  useEffect(() => {
+    const loadUserCoins = async () => {
+      try {
+        const userDataStr = await AsyncStorage.getItem("user");
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          if (userData.coins !== undefined) {
+            setUserCoins(userData.coins);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading user coins:", error);
+      }
+    };
+
+    loadUserCoins();
+  }, []);
+
   const handleLessonPress = (lessonId: number) => {
     onStartLesson(lessonId);
   };
 
-    return (
+  return (
     <View style={styles.container}>
       <Header
         title={cardTitle}
         onBack={() => setScreen("Home")}
-        coins={coins}
+        coins={userCoins}
       />
       <LessonsList
         level={cardTitle}
@@ -41,7 +63,7 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
         onLessonPress={handleLessonPress}
         onLessonComplete={(lessonId) => onLessonComplete(cardTitle, lessonId)}
       />
-      </View>
+    </View>
   );
 };
 

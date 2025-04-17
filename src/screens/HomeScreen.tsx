@@ -64,6 +64,7 @@ const HomeScreen: React.FC<Props> = ({
   const [searchResults, setSearchResults] = useState<Word[]>([]);
   const [userId, setUserId] = useState<string>("");
   const [countId, setCountId] = useState<number>(0);
+  const [userCoins, setUserCoins] = useState<number>(0);
   const searchAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
   const [levelProgress, setLevelProgress] = useState({
@@ -84,6 +85,7 @@ const HomeScreen: React.FC<Props> = ({
           const user = JSON.parse(userData);
           setUserId(user.id);
           setCountId(user.countId);
+          setUserCoins(user.coins || 0);
         }
       } catch (error) {
         console.error("Foydalanuvchi ma'lumotlarini olishda xatolik:", error);
@@ -275,7 +277,7 @@ const HomeScreen: React.FC<Props> = ({
             <View style={styles.coinsContainer}>
               <View style={styles.coins}>
                 <FontAwesome5 name="bitcoin" size={20} color="#FFD700" />
-                <Text style={styles.coinsText}>100</Text>
+                <Text style={styles.coinsText}>{userCoins}</Text>
               </View>
             </View>
 

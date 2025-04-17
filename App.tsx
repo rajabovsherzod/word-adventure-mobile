@@ -86,14 +86,14 @@ const App = () => {
   });
 
   const addLoginNotification = () => {
-          const loginNotification: Notification = {
-            id: Date.now().toString(),
-            title: "Xush kelibsiz!",
+    const loginNotification: Notification = {
+      id: Date.now().toString(),
+      title: "Xush kelibsiz!",
       message: "Tizimga muvaffaqiyatli kirdingiz. O'rganishni davom eting!",
-            type: "login",
-            timestamp: new Date(),
-            read: false,
-          };
+      type: "login",
+      timestamp: new Date(),
+      read: false,
+    };
     setNotifications((prev) => [loginNotification, ...prev]);
   };
 
@@ -276,8 +276,12 @@ const App = () => {
 
     if (isAdmin) return false;
 
-    // LessonContentScreen va Game sahifalari uchun bottom navigatsiyani ko'rsatmaslik
-    return currentScreen !== "Game" && currentScreen !== "LessonContent";
+    // LessonContentScreen, SuggestedLessons va Game sahifalari uchun bottom navigatsiyani ko'rsatmaslik
+    return (
+      currentScreen !== "Game" &&
+      currentScreen !== "LessonContent" &&
+      currentScreen !== "SuggestedLessons"
+    );
   };
 
   // Logout funksiyasini to'g'rilash - to'liq barcha state larni tozalash
@@ -464,44 +468,44 @@ const App = () => {
       <StatusBar backgroundColor="#3C5BFF" barStyle="light-content" />
       <View style={styles.content}>{renderScreen()}</View>
       {shouldShowBottomNav() && (
-      <View style={styles.bottomNavigation}>
-        <TouchableOpacity
-          style={styles.navItem}
+        <View style={styles.bottomNavigation}>
+          <TouchableOpacity
+            style={styles.navItem}
             onPress={() => setCurrentScreen("Home")}
-        >
+          >
             <FontAwesome5
               name="home"
               size={24}
               color={currentScreen === "Home" ? "#3C5BFF" : "#9E9E9E"}
             />
-          <Text
-            style={[
-              styles.navText,
-              currentScreen === "Home" && styles.activeNavText,
-            ]}
-          >
-            Asosiy
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.navText,
+                currentScreen === "Home" && styles.activeNavText,
+              ]}
+            >
+              Asosiy
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
+          <TouchableOpacity
+            style={styles.navItem}
             onPress={() => setCurrentScreen("MyLessons")}
-        >
+          >
             <FontAwesome5
               name="book"
               size={24}
               color={currentScreen === "MyLessons" ? "#3C5BFF" : "#9E9E9E"}
             />
-          <Text
-            style={[
-              styles.navText,
+            <Text
+              style={[
+                styles.navText,
                 currentScreen === "MyLessons" && styles.activeNavText,
-            ]}
-          >
-            Darslarim
-          </Text>
-        </TouchableOpacity>
+              ]}
+            >
+              Darslarim
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.navItem}
@@ -520,46 +524,46 @@ const App = () => {
             >
               Kurslar
             </Text>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
+          <TouchableOpacity
+            style={styles.navItem}
             onPress={() => setCurrentScreen("Dictionary")}
-        >
+          >
             <FontAwesome5
               name="book-open"
               size={24}
               color={currentScreen === "Dictionary" ? "#3C5BFF" : "#9E9E9E"}
             />
-          <Text
-            style={[
-              styles.navText,
-              currentScreen === "Dictionary" && styles.activeNavText,
-            ]}
-          >
-            Lug'at
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.navText,
+                currentScreen === "Dictionary" && styles.activeNavText,
+              ]}
+            >
+              Lug'at
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
+          <TouchableOpacity
+            style={styles.navItem}
             onPress={() => setCurrentScreen("Profile")}
-        >
+          >
             <FontAwesome5
               name="user"
               size={24}
               color={currentScreen === "Profile" ? "#3C5BFF" : "#9E9E9E"}
             />
-          <Text
-            style={[
-              styles.navText,
-              currentScreen === "Profile" && styles.activeNavText,
-            ]}
-          >
-            Profil
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <Text
+              style={[
+                styles.navText,
+                currentScreen === "Profile" && styles.activeNavText,
+              ]}
+            >
+              Profil
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );

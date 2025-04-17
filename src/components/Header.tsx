@@ -34,8 +34,10 @@ const Header: React.FC<HeaderProps> = ({ title, onBack, coins }) => {
           <Text style={styles.headerTitle}>{title}</Text>
         </View>
         <View style={styles.coinsContainer}>
-          <FontAwesome5 name="coins" size={14} color="#FFD700" />
-          <Text style={styles.coinsText}>{coins}</Text>
+          <View style={styles.coins}>
+            <FontAwesome5 name="bitcoin" size={18} color="#FFD700" />
+            <Text style={styles.coinsText}>{coins}</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -84,18 +86,20 @@ const styles = StyleSheet.create({
     color: "white",
   },
   coinsContainer: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+  },
+  coins: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
-    borderRadius: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
   },
   coinsText: {
     color: "white",
-    marginLeft: 6,
-    fontWeight: "600",
+    marginLeft: 8,
     fontSize: 14,
+    fontWeight: "600",
   },
 });
 
