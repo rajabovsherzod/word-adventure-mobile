@@ -149,28 +149,6 @@ const LessonsScreen: React.FC<Props> = ({ setScreen, onStartGame }) => {
           ))
         )}
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNavigation}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => setScreen("Home")}
-        >
-          <FontAwesome5 name="home" size={20} color="#9E9E9E" />
-          <Text style={styles.navText}>Asosiy</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
-          <FontAwesome5 name="book-reader" size={20} color="#3C5BFF" />
-          <Text style={styles.activeNavText}>Darslarim</Text>
-          <View style={styles.activeIndicator} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem}>
-          <FontAwesome5 name="graduation-cap" size={20} color="#9E9E9E" />
-          <Text style={styles.navText}>Kurslar</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };

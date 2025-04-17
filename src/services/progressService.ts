@@ -217,7 +217,7 @@ class ProgressService {
       try {
         // Call API to initialize lesson progress
         const response = await initializeLessonProgress(lessonId, words);
-        
+
         // Process the response based on its format
         if (Array.isArray(response)) {
           this.progress.lessons = response;
@@ -226,8 +226,11 @@ class ProgressService {
           this.progress.lessons = response.lessons;
           await this.saveProgressToCache();
         } else {
-          console.log("Unexpected response format from initializeLessonProgress:", response);
-          
+          console.log(
+            "Unexpected response format from initializeLessonProgress:",
+            response
+          );
+
           // Fallback: Create local progress data
           this.createLocalLessonProgress(lessonId, words);
         }
@@ -240,19 +243,19 @@ class ProgressService {
       return this.progress;
     } catch (error) {
       console.error("Error in initializeLessonProgress:", error);
-      
+
       // Create local progress on any error
       this.createLocalLessonProgress(lessonId, words);
       return this.progress;
     }
   }
-  
+
   // Helper to create local lesson progress
   private createLocalLessonProgress(lessonId: string, words: string[]) {
     const existingLesson = this.progress.lessons.find(
       (l) => String(l.lessonId) === String(lessonId)
     );
-    
+
     if (!existingLesson) {
       const newLessonProgress: ILessonProgress = {
         userId: "local",
@@ -358,8 +361,8 @@ class ProgressService {
 
     if (stage === "match") {
       const matchStage = lessonProgress.stages.match;
-      matchStage.progress = Math.min(matchStage.progress + 10, 100);
-      matchStage.completed = matchStage.progress >= 100;
+      matchStage.progress = 100;
+      matchStage.completed = true;
     } else {
       const stageData = lessonProgress.stages[stage] as IStageProgress;
       if (!stageData.completedWords) stageData.completedWords = [];

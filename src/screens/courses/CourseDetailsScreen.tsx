@@ -90,12 +90,7 @@ const CourseDetailsScreen: React.FC<Props> = ({
       }
 
       if (lesson.id === "beginner-mod-1-les-1") {
-        // Present Simple darsini boshlaymiz
-        Alert.alert("Dars boshlanmoqda", "Present Simple darsi yuklanmoqda...");
-
-        // Yangi ekran yaratamiz
-        setScreen("LessonContent");
-
+        // Present Simple darsiga o'tish
         // AsyncStorage'ga kerakli ma'lumotlarni saqlash
         await AsyncStorage.setItem(
           "currentLesson",
@@ -106,6 +101,9 @@ const CourseDetailsScreen: React.FC<Props> = ({
             courseId: course.id,
           })
         );
+
+        // Darsga o'tish
+        setScreen("LessonContent");
       } else {
         // Dars tugallangan sifatida belgilash
         await coursesService.updateLessonStatus(
@@ -121,9 +119,10 @@ const CourseDetailsScreen: React.FC<Props> = ({
           setCourse(updatedCourse);
         }
 
+        // Foydalanuvchiga ma'lumot berish
         Alert.alert(
-          "Dars boshlanmoqda",
-          `${lesson.title} darsi yuklanmoqda...`
+          "Dars tugallandi",
+          `"${lesson.title}" darsi muvaffaqiyatli yakunlandi.`
         );
       }
     } catch (error) {

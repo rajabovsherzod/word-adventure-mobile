@@ -14,10 +14,13 @@ import {
   Platform,
   Dimensions,
   FlatList,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
 import { searchWords, Word, getWordsByCardAndLesson } from "../data/words";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import progressService from "../services/progressService";
 
 const { height } = Dimensions.get("window");
 const STATUSBAR_HEIGHT =
@@ -37,6 +40,17 @@ type Props = {
   onCardSelect: (cardId: number, level: string) => void;
 };
 
+// Dars tugatilganligini tekshirish
+const isLessonCompleted = (lesson: any) => {
+  // Barcha stageler completed bo'lsa, lesson ham completed hisoblanadi
+  return (
+    lesson.stages?.memorize?.completed &&
+    lesson.stages?.match?.completed &&
+    lesson.stages?.arrange?.completed &&
+    lesson.stages?.write?.completed
+  );
+};
+
 const HomeScreen: React.FC<Props> = ({
   setIsAuthenticated,
   setScreen,
@@ -52,6 +66,11 @@ const HomeScreen: React.FC<Props> = ({
   const [countId, setCountId] = useState<number>(0);
   const searchAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
+  const [levelProgress, setLevelProgress] = useState({
+    beginner: { completed: 0, total: 5 },
+    medium: { completed: 0, total: 5 },
+    advanced: { completed: 0, total: 5 },
+  });
 
   let [fontsLoaded] = useFonts({
     Lexend_400Regular,
@@ -72,7 +91,50 @@ const HomeScreen: React.FC<Props> = ({
     };
 
     getUserData();
+    loadProgress();
   }, []);
+
+  // Darslar bo'yicha progressni yuklash
+  const loadProgress = async () => {
+    try {
+      // Progressni olish
+      const progressData = await progressService.getUserProgress();
+
+      if (Array.isArray(progressData)) {
+        // Har bir level uchun tugatilgan darslar sonini hisoblab chiqamiz
+        const beginnerLessons = progressData.filter(
+          (lesson) =>
+            lesson.lessonId.startsWith("1-") && isLessonCompleted(lesson)
+        ).length;
+
+        const mediumLessons = progressData.filter(
+          (lesson) =>
+            lesson.lessonId.startsWith("2-") && isLessonCompleted(lesson)
+        ).length;
+
+        const advancedLessons = progressData.filter(
+          (lesson) =>
+            lesson.lessonId.startsWith("3-") && isLessonCompleted(lesson)
+        ).length;
+
+        setLevelProgress({
+          beginner: { completed: beginnerLessons, total: 5 },
+          medium: { completed: mediumLessons, total: 5 },
+          advanced: { completed: advancedLessons, total: 5 },
+        });
+
+        console.log("Progress loaded:", {
+          beginnerLessons,
+          mediumLessons,
+          advancedLessons,
+        });
+      } else {
+        console.log("Progress data is not array:", progressData);
+      }
+    } catch (error) {
+      console.error("Error loading progress:", error);
+    }
+  };
 
   // Interpolate values for animations
   const headerHeight = scrollY.interpolate({
@@ -307,10 +369,22 @@ const HomeScreen: React.FC<Props> = ({
                   Beginner
                 </Text>
                 <View style={styles.levelProgressBar}>
-                  <View style={[styles.progressFill, { width: "30%" }]} />
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${
+                          (levelProgress.beginner.completed /
+                            levelProgress.beginner.total) *
+                          100
+                        }%`,
+                      },
+                    ]}
+                  />
                 </View>
                 <Text style={[styles.progressText, { color: "#3C5BFF" }]}>
-                  5/20 ta dars
+                  {levelProgress.beginner.completed}/
+                  {levelProgress.beginner.total} ta dars
                 </Text>
               </TouchableOpacity>
 
@@ -324,10 +398,22 @@ const HomeScreen: React.FC<Props> = ({
                 </View>
                 <Text style={styles.levelTitle}>Medium</Text>
                 <View style={styles.levelProgressBar}>
-                  <View style={[styles.progressFill, { width: "15%" }]} />
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${
+                          (levelProgress.medium.completed /
+                            levelProgress.medium.total) *
+                          100
+                        }%`,
+                      },
+                    ]}
+                  />
                 </View>
                 <Text style={[styles.progressText, { color: "#3C5BFF" }]}>
-                  3/20 ta dars
+                  {levelProgress.medium.completed}/{levelProgress.medium.total}{" "}
+                  ta dars
                 </Text>
               </TouchableOpacity>
 
@@ -341,10 +427,22 @@ const HomeScreen: React.FC<Props> = ({
                 </View>
                 <Text style={styles.levelTitle}>Advanced</Text>
                 <View style={styles.levelProgressBar}>
-                  <View style={[styles.progressFill, { width: "5%" }]} />
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${
+                          (levelProgress.advanced.completed /
+                            levelProgress.advanced.total) *
+                          100
+                        }%`,
+                      },
+                    ]}
+                  />
                 </View>
                 <Text style={[styles.progressText, { color: "#3C5BFF" }]}>
-                  1/20 ta dars
+                  {levelProgress.advanced.completed}/
+                  {levelProgress.advanced.total} ta dars
                 </Text>
               </TouchableOpacity>
             </ScrollView>

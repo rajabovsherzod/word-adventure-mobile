@@ -36,6 +36,8 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
   const [quizAnswers, setQuizAnswers] = useState<string[]>([]);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [score, setScore] = useState(0);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [showAnswer, setShowAnswer] = useState(false);
 
   // Dars ma'lumotlarini yuklash
   useEffect(() => {
@@ -63,6 +65,12 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
     loadLessonData();
   }, []);
 
+  const switchToStep = (step: LessonStep) => {
+    if (step !== LessonStep.FINISH) {
+      setCurrentStep(step);
+    }
+  };
+
   const handleNextStep = () => {
     switch (currentStep) {
       case LessonStep.EXPLANATION:
@@ -75,11 +83,17 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
         setCurrentStep(LessonStep.QUIZ);
         break;
       case LessonStep.QUIZ:
-        if (currentQuizIndex < presentSimpleQuiz.length - 1) {
-          setCurrentQuizIndex(currentQuizIndex + 1);
-        } else {
-          // Quiz yakunlandi
-          setCurrentStep(LessonStep.FINISH);
+        if (showAnswer) {
+          // Javob ko'rsatilgandan keyin keyingi savolga o'tish
+          setShowAnswer(false);
+          setSelectedOption(null);
+
+          if (currentQuizIndex < presentSimpleQuiz.length - 1) {
+            setCurrentQuizIndex(currentQuizIndex + 1);
+          } else {
+            // Quiz yakunlandi
+            setCurrentStep(LessonStep.FINISH);
+          }
         }
         break;
       case LessonStep.FINISH:
@@ -90,6 +104,8 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
   };
 
   const handleAnswerSelect = (answerIndex: number) => {
+    if (showAnswer) return; // Agar javob ko'rsatilyotgan bo'lsa, yangi javob tanlanmasin
+
     const currentQuiz = presentSimpleQuiz[currentQuizIndex];
     const selectedAnswer = currentQuiz.options[answerIndex];
 
@@ -97,19 +113,44 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
     const newAnswers = [...quizAnswers];
     newAnswers[currentQuizIndex] = selectedAnswer;
     setQuizAnswers(newAnswers);
+    setSelectedOption(answerIndex);
+    setShowAnswer(true);
 
     // To'g'ri javob tekshirish
     if (selectedAnswer === currentQuiz.correctAnswer) {
       setScore(score + 1);
-      Alert.alert("To'g'ri!", "Siz to'g'ri javob berdingiz.");
-    } else {
-      Alert.alert("Noto'g'ri", `To'g'ri javob: ${currentQuiz.correctAnswer}`);
     }
+  };
 
-    // Keyingi savolga o'tish
-    setTimeout(() => {
-      handleNextStep();
-    }, 1000);
+  // Keyingi bosqichga o'tish uchun tugma
+  const renderNextButton = () => {
+    if (currentStep !== LessonStep.FINISH) {
+      return (
+        <TouchableOpacity
+          style={[
+            styles.nextButton,
+            currentStep === LessonStep.QUIZ &&
+              !showAnswer &&
+              selectedOption === null &&
+              styles.disabledButton,
+          ]}
+          onPress={handleNextStep}
+          disabled={
+            currentStep === LessonStep.QUIZ &&
+            !showAnswer &&
+            selectedOption === null
+          }
+        >
+          <Text style={styles.nextButtonText}>
+            {currentStep === LessonStep.QUIZ && showAnswer
+              ? "Keyingi savol"
+              : "Keyingi bosqich"}
+          </Text>
+          <FontAwesome5 name="arrow-right" size={18} color="white" />
+        </TouchableOpacity>
+      );
+    }
+    return null;
   };
 
   if (loading) {
@@ -160,6 +201,8 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
                 Does + he/she/it + verb?
               </Text>
             </View>
+
+            {renderNextButton()}
           </View>
         );
 
@@ -222,6 +265,8 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
                 U shokoladni yaxshi ko'radimi?
               </Text>
             </View>
+
+            {renderNextButton()}
           </View>
         );
 
@@ -285,6 +330,8 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
                 </Text>
               </View>
             </View>
+
+            {renderNextButton()}
           </View>
         );
 
@@ -303,12 +350,78 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
               {currentQuiz.options.map((option, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={styles.quizOption}
+                  style={[
+                    styles.quizOption,
+                    showAnswer &&
+                      index === selectedOption &&
+                      option === currentQuiz.correctAnswer &&
+                      styles.correctOption,
+                    showAnswer &&
+                      index === selectedOption &&
+                      option !== currentQuiz.correctAnswer &&
+                      styles.wrongOption,
+                    showAnswer &&
+                      option === currentQuiz.correctAnswer &&
+                      styles.correctOption,
+                  ]}
                   onPress={() => handleAnswerSelect(index)}
+                  disabled={showAnswer}
                 >
-                  <Text style={styles.quizOptionText}>{option}</Text>
+                  <Text
+                    style={[
+                      styles.quizOptionText,
+                      showAnswer &&
+                        ((index === selectedOption &&
+                          option === currentQuiz.correctAnswer) ||
+                          option === currentQuiz.correctAnswer) &&
+                        styles.correctOptionText,
+                      showAnswer &&
+                        index === selectedOption &&
+                        option !== currentQuiz.correctAnswer &&
+                        styles.wrongOptionText,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+
+                  {showAnswer && option === currentQuiz.correctAnswer && (
+                    <FontAwesome5
+                      name="check"
+                      size={16}
+                      color="white"
+                      style={styles.optionIcon}
+                    />
+                  )}
+
+                  {showAnswer &&
+                    index === selectedOption &&
+                    option !== currentQuiz.correctAnswer && (
+                      <FontAwesome5
+                        name="times"
+                        size={16}
+                        color="white"
+                        style={styles.optionIcon}
+                      />
+                    )}
                 </TouchableOpacity>
               ))}
+
+              {showAnswer && (
+                <View style={styles.answerFeedback}>
+                  {selectedOption !== null &&
+                  currentQuiz.options[selectedOption] ===
+                    currentQuiz.correctAnswer ? (
+                    <Text style={styles.correctFeedback}>To'g'ri javob!</Text>
+                  ) : (
+                    <Text style={styles.wrongFeedback}>
+                      Noto'g'ri javob. To'g'ri javob:{" "}
+                      {currentQuiz.correctAnswer}
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              {renderNextButton()}
             </View>
           </View>
         );
@@ -336,6 +449,13 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
                   Yaxshi! Mashqlarni ko'proq bajarishingiz kerak.
                 </Text>
               )}
+
+              <TouchableOpacity
+                style={styles.nextButton}
+                onPress={() => setScreen("CourseDetails")}
+              >
+                <Text style={styles.nextButtonText}>Kursga qaytish</Text>
+              </TouchableOpacity>
             </View>
           </View>
         );
@@ -348,83 +468,124 @@ const LessonContentScreen: React.FC<LessonContentProps> = ({ setScreen }) => {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => setScreen("CourseDetails")}
-        >
-          <FontAwesome5 name="arrow-left" size={20} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {lessonData?.lessonTitle || "Present Simple"}
-        </Text>
-        <View style={styles.progressIndicator}>
-          <View style={styles.progressStep}>
-            <View
-              style={[
-                styles.step,
-                currentStep === LessonStep.EXPLANATION
-                  ? styles.activeStep
-                  : currentStep !== LessonStep.EXPLANATION
-                  ? styles.completedStep
-                  : {},
-              ]}
-            />
-            <Text style={styles.stepText}>Nazariya</Text>
-          </View>
-          <View style={styles.progressLine} />
-          <View style={styles.progressStep}>
-            <View
-              style={[
-                styles.step,
-                currentStep === LessonStep.EXAMPLES
-                  ? styles.activeStep
-                  : currentStep > LessonStep.EXAMPLES
-                  ? styles.completedStep
-                  : {},
-              ]}
-            />
-            <Text style={styles.stepText}>Misollar</Text>
-          </View>
-          <View style={styles.progressLine} />
-          <View style={styles.progressStep}>
-            <View
-              style={[
-                styles.step,
-                currentStep === LessonStep.PRACTICE
-                  ? styles.activeStep
-                  : currentStep > LessonStep.PRACTICE
-                  ? styles.completedStep
-                  : {},
-              ]}
-            />
-            <Text style={styles.stepText}>Mashq</Text>
-          </View>
-          <View style={styles.progressLine} />
-          <View style={styles.progressStep}>
-            <View
-              style={[
-                styles.step,
-                currentStep === LessonStep.QUIZ ||
-                currentStep === LessonStep.FINISH
-                  ? styles.activeStep
-                  : {},
-              ]}
-            />
-            <Text style={styles.stepText}>Test</Text>
-          </View>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => setScreen("CourseDetails")}
+          >
+            <FontAwesome5 name="arrow-left" size={20} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {lessonData?.lessonTitle || "Present Simple"}
+          </Text>
         </View>
       </View>
 
-      <ScrollView style={styles.scrollContainer}>{renderContent()}</ScrollView>
-
-      <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.nextButton} onPress={handleNextStep}>
-          <Text style={styles.nextButtonText}>
-            {currentStep === LessonStep.FINISH ? "Yakunlash" : "Davom etish"}
+      {/* Tab Navigation */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[
+            styles.tab,
+            currentStep === LessonStep.EXPLANATION && styles.activeTab,
+          ]}
+          onPress={() => switchToStep(LessonStep.EXPLANATION)}
+        >
+          <FontAwesome5
+            name="book"
+            size={18}
+            color={currentStep === LessonStep.EXPLANATION ? "#3C5BFF" : "#666"}
+          />
+          <Text
+            style={[
+              styles.tabText,
+              currentStep === LessonStep.EXPLANATION && styles.activeTabText,
+            ]}
+          >
+            Nazariya
           </Text>
-          <FontAwesome5 name="arrow-right" size={18} color="white" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tab,
+            currentStep === LessonStep.EXAMPLES && styles.activeTab,
+          ]}
+          onPress={() => switchToStep(LessonStep.EXAMPLES)}
+        >
+          <FontAwesome5
+            name="list-ul"
+            size={18}
+            color={currentStep === LessonStep.EXAMPLES ? "#3C5BFF" : "#666"}
+          />
+          <Text
+            style={[
+              styles.tabText,
+              currentStep === LessonStep.EXAMPLES && styles.activeTabText,
+            ]}
+          >
+            Misollar
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tab,
+            currentStep === LessonStep.PRACTICE && styles.activeTab,
+          ]}
+          onPress={() => switchToStep(LessonStep.PRACTICE)}
+        >
+          <FontAwesome5
+            name="pencil-alt"
+            size={18}
+            color={currentStep === LessonStep.PRACTICE ? "#3C5BFF" : "#666"}
+          />
+          <Text
+            style={[
+              styles.tabText,
+              currentStep === LessonStep.PRACTICE && styles.activeTabText,
+            ]}
+          >
+            Mashq
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tab,
+            (currentStep === LessonStep.QUIZ ||
+              currentStep === LessonStep.FINISH) &&
+              styles.activeTab,
+          ]}
+          onPress={() => {
+            if (currentStep !== LessonStep.FINISH) {
+              switchToStep(LessonStep.QUIZ);
+            }
+          }}
+        >
+          <FontAwesome5
+            name="tasks"
+            size={18}
+            color={
+              currentStep === LessonStep.QUIZ ||
+              currentStep === LessonStep.FINISH
+                ? "#3C5BFF"
+                : "#666"
+            }
+          />
+          <Text
+            style={[
+              styles.tabText,
+              (currentStep === LessonStep.QUIZ ||
+                currentStep === LessonStep.FINISH) &&
+                styles.activeTabText,
+            ]}
+          >
+            Test
+          </Text>
         </TouchableOpacity>
       </View>
+
+      <ScrollView style={styles.scrollContainer}>{renderContent()}</ScrollView>
     </SafeAreaView>
   );
 };
@@ -476,9 +637,17 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: "#3C5BFF",
-    paddingTop: StatusBar.currentHeight || 44,
-    paddingBottom: 10,
+    paddingTop: StatusBar.currentHeight || 10,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    overflow: "hidden",
+    paddingBottom: 12,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 15,
+    paddingVertical: 10,
   },
   backButton: {
     padding: 8,
@@ -487,43 +656,37 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
-    textAlign: "center",
-    marginVertical: 10,
-  },
-  progressIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-    paddingHorizontal: 5,
-  },
-  progressStep: {
-    alignItems: "center",
-  },
-  step: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#e0e0e0",
-    borderWidth: 2,
-    borderColor: "white",
-  },
-  activeStep: {
-    backgroundColor: "#FFD700",
-  },
-  completedStep: {
-    backgroundColor: "#4CAF50",
-  },
-  progressLine: {
     flex: 1,
-    height: 2,
-    backgroundColor: "white",
-    marginHorizontal: 5,
+    textAlign: "center",
+    marginRight: 30, // Back button ni hisobga olib muvozanatlashtirish
   },
-  stepText: {
-    color: "white",
-    fontSize: 10,
-    marginTop: 4,
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "white",
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  tab: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  activeTab: {
+    borderBottomColor: "#3C5BFF",
+  },
+  tabText: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 5,
+  },
+  activeTabText: {
+    color: "#3C5BFF",
+    fontWeight: "500",
   },
   scrollContainer: {
     flex: 1,
@@ -661,10 +824,47 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 15,
     marginBottom: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  correctOption: {
+    backgroundColor: "#4CAF50",
+  },
+  wrongOption: {
+    backgroundColor: "#F44336",
   },
   quizOptionText: {
     fontSize: 16,
     color: "#333",
+  },
+  correctOptionText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  wrongOptionText: {
+    color: "white",
+  },
+  optionIcon: {
+    marginLeft: 5,
+  },
+  answerFeedback: {
+    marginTop: 15,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: "#f8f8f8",
+  },
+  correctFeedback: {
+    color: "#4CAF50",
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 16,
+  },
+  wrongFeedback: {
+    color: "#F44336",
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 16,
   },
   finishBox: {
     backgroundColor: "white",
@@ -700,10 +900,11 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlign: "center",
     lineHeight: 24,
+    marginBottom: 20,
   },
   bottomBar: {
     backgroundColor: "white",
-    padding: 15,
+    padding: 12,
     borderTopWidth: 1,
     borderTopColor: "#eee",
   },
@@ -714,6 +915,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 10,
+  },
+  disabledButton: {
+    backgroundColor: "#9E9E9E",
   },
   nextButtonText: {
     color: "white",
