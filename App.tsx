@@ -23,9 +23,13 @@ import ProfileScreen from "./src/screens/ProfileScreen";
 import AdminPanelScreen from "./src/screens/AdminPanelScreen";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
 import SuggestedLessonsScreen from "./src/screens/SuggestedLessonsScreen";
+import CoursesScreen from "./src/screens/courses/CoursesScreen";
+import CourseDetailsScreen from "./src/screens/courses/CourseDetailsScreen";
+import LessonContentScreen from "./src/screens/LessonContentScreen";
 
 import { Word, getWordById, getWordsByCardAndLesson } from "./src/data/words";
 import { checkAuth, logout } from "./src/services/api";
+import { GrammarCourse } from "./src/models/CourseTypes";
 
 type Lesson = {
   id: string;
@@ -60,6 +64,9 @@ const App = () => {
   const [selectedDictionaryWord, setSelectedDictionaryWord] =
     useState<Word | null>(null);
   const [selectedCardTitle, setSelectedCardTitle] = useState<string>("");
+  const [selectedCourse, setSelectedCourse] = useState<GrammarCourse | null>(
+    null
+  );
 
   // Har bir level uchun currentLesson qiymati - bu darslar progressini saqlash uchun
   // Keylar level nomlari, qiymatlar esa shu level uchun ochilgan eng katta dars raqami
@@ -167,6 +174,31 @@ const App = () => {
           />
         );
       case "Courses":
+        return (
+          <CoursesScreen
+            setScreen={setCurrentScreen}
+            setSelectedCourse={setSelectedCourse}
+            coins={coins}
+            setCoins={setCoins}
+          />
+        );
+      case "CourseDetails":
+        return selectedCourse ? (
+          <CourseDetailsScreen
+            setScreen={setCurrentScreen}
+            selectedCourse={selectedCourse}
+            coins={coins}
+            setCoins={setCoins}
+          />
+        ) : (
+          <CoursesScreen
+            setScreen={setCurrentScreen}
+            setSelectedCourse={setSelectedCourse}
+            coins={coins}
+            setCoins={setCoins}
+          />
+        );
+      case "CreateLesson":
         return <CreateLessonScreen setScreen={setCurrentScreen} />;
       case "Dictionary":
         return (
@@ -222,6 +254,8 @@ const App = () => {
             onLessonComplete={unlockNextLesson}
           />
         );
+      case "LessonContent":
+        return <LessonContentScreen setScreen={setCurrentScreen} />;
       default:
         return (
           <HomeScreen
@@ -262,6 +296,7 @@ const App = () => {
       setSelectedLessonId(1);
       setSelectedDictionaryWord(null);
       setSelectedCardTitle("");
+      setSelectedCourse(null);
 
       // Eng oxirida auth state o'zgartirish
       setIsAdmin(false);
@@ -292,6 +327,7 @@ const App = () => {
         setSelectedLessonId(1);
         setSelectedDictionaryWord(null);
         setSelectedCardTitle("");
+        setSelectedCourse(null);
         setIsAdmin(false);
         setIsAuthenticated(false);
 
@@ -539,6 +575,25 @@ const styles = StyleSheet.create({
   centered: {
     justifyContent: "center",
     alignItems: "center",
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333333",
+    marginBottom: 10,
+    fontFamily: "Lexend_400Regular",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#666666",
+    textAlign: "center",
+    fontFamily: "Lexend_400Regular",
   },
   bottomNavigation: {
     flexDirection: "row",

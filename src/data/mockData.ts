@@ -1,4 +1,4 @@
-import { Word } from "../types/lesson";
+import { type Word } from "../types/lesson";
 
 export const MAX_WORDS_PER_LESSON = 10;
 export const MAX_MISTAKES = 3;
