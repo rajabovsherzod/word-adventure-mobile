@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Text } from "react-native";
 import Header from "../components/Header";
 import LessonsList from "../components/LessonsList";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import LoadingScreen from "../components/LoadingScreen";
 
 type Props = {
   setScreen: (screen: string) => void;
@@ -24,29 +25,47 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
   onLessonComplete,
 }) => {
   const [userCoins, setUserCoins] = useState<number>(coins || 0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Foydalanuvchi coins qiymatini AsyncStorage'dan olish
   useEffect(() => {
-    const loadUserCoins = async () => {
+    const loadData = async () => {
       try {
-        const userDataStr = await AsyncStorage.getItem("user");
-        if (userDataStr) {
-          const userData = JSON.parse(userDataStr);
-          if (userData.coins !== undefined) {
-            setUserCoins(userData.coins);
-          }
-        }
+        await loadUserCoins();
+        // Give a slight delay to ensure smooth transition
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500);
       } catch (error) {
-        console.error("Error loading user coins:", error);
+        console.error("Error loading data:", error);
+        setIsLoading(false);
       }
     };
 
-    loadUserCoins();
+    loadData();
   }, []);
+
+  const loadUserCoins = async () => {
+    try {
+      const userDataStr = await AsyncStorage.getItem("user");
+      if (userDataStr) {
+        const userData = JSON.parse(userDataStr);
+        if (userData.coins !== undefined) {
+          setUserCoins(userData.coins);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading user coins:", error);
+    }
+  };
 
   const handleLessonPress = (lessonId: number) => {
     onStartLesson(lessonId);
   };
+
+  if (isLoading) {
+    return <LoadingScreen color="#3C5BFF" />;
+  }
 
   return (
     <View style={styles.container}>

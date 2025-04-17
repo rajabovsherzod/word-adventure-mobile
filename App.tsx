@@ -10,6 +10,10 @@ import {
 } from "react-native";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Import LoadingScreen
+import LoadingScreen from "./src/components/LoadingScreen";
 
 // Import screens
 import LessonsScreen from "./src/screens/LessonsScreen";
@@ -68,6 +72,12 @@ const App = () => {
   const [selectedCourse, setSelectedCourse] = useState<GrammarCourse | null>(
     null
   );
+  // Add a state for transition loading
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+  const [transitionMessage, setTransitionMessage] =
+    useState<string>("Yuklanmoqda...");
+  const [transitionTitle, setTransitionTitle] =
+    useState<string>("Word Adventure");
 
   // Har bir level uchun currentLesson qiymati - bu darslar progressini saqlash uchun
   // Keylar level nomlari, qiymatlar esa shu level uchun ochilgan eng katta dars raqami
@@ -98,6 +108,64 @@ const App = () => {
     setNotifications((prev) => [loginNotification, ...prev]);
   };
 
+  // Custom navigation function to show loading between screens
+  const navigateToScreen = (
+    screenName: string,
+    message?: string,
+    title?: string
+  ) => {
+    // Start transition
+    setTransitionMessage(message || getDefaultMessage(screenName));
+    setTransitionTitle(title || getDefaultTitle(screenName));
+    setIsTransitioning(true);
+
+    // Timeout for smoother transitions
+    setTimeout(() => {
+      setCurrentScreen(screenName);
+
+      // End transition with a delay for better UX
+      setTimeout(() => {
+        setIsTransitioning(false);
+      }, 800);
+    }, 300);
+  };
+
+  // Helper function to get default loading message based on screen
+  const getDefaultMessage = (screenName: string): string => {
+    switch (screenName) {
+      case "Home":
+        return "Bosh sahifa yuklanmoqda...";
+      case "SuggestedLessons":
+        return "Darslar ro'yxati yuklanmoqda...";
+      case "Game":
+        return "O'yin tayyorlanmoqda...";
+      case "Dictionary":
+        return "Lug'at yuklanmoqda...";
+      case "Profile":
+        return "Profil yuklanmoqda...";
+      case "Courses":
+        return "Kurslar yuklanmoqda...";
+      default:
+        return "Sahifa yuklanmoqda...";
+    }
+  };
+
+  // Helper function to get default title based on screen
+  const getDefaultTitle = (screenName: string): string => {
+    if (screenName === "Game" && currentLesson) {
+      return currentLesson.name;
+    }
+
+    switch (screenName) {
+      case "SuggestedLessons":
+        return selectedCardTitle || "Darslar";
+      case "Dictionary":
+        return "Lug'at";
+      default:
+        return "Word Adventure";
+    }
+  };
+
   const renderScreen = () => {
     console.log("--- RENDER SCREEN ---");
     console.log(
@@ -116,8 +184,8 @@ const App = () => {
               setIsAuthenticated(value);
               if (value) addLoginNotification();
             }}
-            setScreen={setCurrentScreen}
-            onLogin={() => setCurrentScreen("Auth")}
+            setScreen={navigateToScreen}
+            onLogin={() => navigateToScreen("Auth", "Tizimga kirish...")}
           />
         );
       }
@@ -125,10 +193,13 @@ const App = () => {
         <AuthScreen
           setIsAuthenticated={(value) => {
             setIsAuthenticated(value);
-            if (value) addLoginNotification();
+            if (value) {
+              addLoginNotification();
+              navigateToScreen("Home", "Bosh sahifa yuklanmoqda...");
+            }
           }}
-          setScreen={setCurrentScreen}
-          onSignUp={() => setCurrentScreen("SignUp")}
+          setScreen={navigateToScreen}
+          onSignUp={() => navigateToScreen("SignUp", "Ro'yxatdan o'tish...")}
           setIsAdmin={setIsAdmin}
         />
       );
@@ -141,7 +212,7 @@ const App = () => {
       if (currentScreen === "Profile") {
         return (
           <ProfileScreen
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             setIsAuthenticated={setIsAuthenticated}
             isAdmin={true}
             handleLogout={handleLogout}
@@ -149,7 +220,7 @@ const App = () => {
         );
       }
       // Barcha boshqa holatlarda AdminPanel ko'rsatiladi
-      return <AdminPanelScreen setScreen={setCurrentScreen} />;
+      return <AdminPanelScreen setScreen={navigateToScreen} />;
     }
 
     // Regular user ekranlari
@@ -159,7 +230,7 @@ const App = () => {
         return (
           <HomeScreen
             setIsAuthenticated={setIsAuthenticated}
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             onWordSelect={handleWordSelect}
             unreadNotificationsCount={
               notifications.filter((n) => !n.read).length
@@ -171,14 +242,14 @@ const App = () => {
       case "MyLessons":
         return (
           <LessonsScreen
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             onStartGame={handleStartGame}
           />
         );
       case "Courses":
         return (
           <CoursesScreen
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             setSelectedCourse={setSelectedCourse}
             coins={coins}
             setCoins={setCoins}
@@ -187,25 +258,25 @@ const App = () => {
       case "CourseDetails":
         return selectedCourse ? (
           <CourseDetailsScreen
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             selectedCourse={selectedCourse}
             coins={coins}
             setCoins={setCoins}
           />
         ) : (
           <CoursesScreen
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             setSelectedCourse={setSelectedCourse}
             coins={coins}
             setCoins={setCoins}
           />
         );
       case "CreateLesson":
-        return <CreateLessonScreen setScreen={setCurrentScreen} />;
+        return <CreateLessonScreen setScreen={navigateToScreen} />;
       case "Dictionary":
         return (
           <DictionaryScreen
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             selectedWord={selectedDictionaryWord}
             onWordSelect={handleWordSelect}
           />
@@ -213,7 +284,7 @@ const App = () => {
       case "Profile":
         return (
           <ProfileScreen
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             setIsAuthenticated={setIsAuthenticated}
             isAdmin={isAdmin}
             handleLogout={handleLogout}
@@ -222,24 +293,25 @@ const App = () => {
       case "Game":
         return currentLesson ? (
           <LessonGameScreen
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             lesson={currentLesson}
           />
         ) : (
           <HomeScreen
             setIsAuthenticated={setIsAuthenticated}
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             onWordSelect={handleWordSelect}
             unreadNotificationsCount={
               notifications.filter((n) => !n.read).length
             }
             onCardSelect={handleCardSelect}
+            onSearchStateChange={setIsSearchOpen}
           />
         );
       case "Notifications":
         return (
           <NotificationsScreen
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             notifications={notifications}
             markNotificationAsRead={markNotificationAsRead}
           />
@@ -247,7 +319,7 @@ const App = () => {
       case "SuggestedLessons":
         return (
           <SuggestedLessonsScreen
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             cardId={selectedCardId}
             cardTitle={selectedCardTitle}
             onStartLesson={handleStartLesson}
@@ -257,17 +329,18 @@ const App = () => {
           />
         );
       case "LessonContent":
-        return <LessonContentScreen setScreen={setCurrentScreen} />;
+        return <LessonContentScreen setScreen={navigateToScreen} />;
       default:
         return (
           <HomeScreen
             setIsAuthenticated={setIsAuthenticated}
-            setScreen={setCurrentScreen}
+            setScreen={navigateToScreen}
             onWordSelect={handleWordSelect}
             unreadNotificationsCount={
               notifications.filter((n) => !n.read).length
             }
             onCardSelect={handleCardSelect}
+            onSearchStateChange={setIsSearchOpen}
           />
         );
     }
@@ -355,6 +428,29 @@ const App = () => {
             typeof authData.user.isAdmin
           );
 
+          // Foydalanuvchi tangalarini o'rnatish
+          if (authData.user.coins !== undefined) {
+            console.log("Setting user coins:", authData.user.coins);
+            setCoins(authData.user.coins);
+          } else {
+            // Agar foydalanuvchida coins bo'lmasa, AsyncStorage dan olish
+            try {
+              const userDataStr = await AsyncStorage.getItem("user");
+              if (userDataStr) {
+                const userData = JSON.parse(userDataStr);
+                if (userData.coins !== undefined) {
+                  console.log(
+                    "Setting coins from AsyncStorage:",
+                    userData.coins
+                  );
+                  setCoins(userData.coins);
+                }
+              }
+            } catch (error) {
+              console.error("Error loading coins from AsyncStorage:", error);
+            }
+          }
+
           // Auth state larni o'rnatish
           setIsAuthenticated(true);
           setIsAdmin(isUserAdmin);
@@ -382,7 +478,7 @@ const App = () => {
 
   const handleStartGame = useCallback((lesson: Lesson) => {
     setCurrentLesson(lesson);
-    setCurrentScreen("Game");
+    navigateToScreen("Game", "O'yin tayyorlanmoqda...", lesson.name);
   }, []);
 
   const handleWordSelect = (word: Word) => {
@@ -398,14 +494,49 @@ const App = () => {
     );
   }, []);
 
-  const addCoins = (amount: number) => {
-    setCoins((prev) => prev + amount);
+  const addCoins = async (amount: number) => {
+    try {
+      // State ni o'zgartirish
+      setCoins((prev) => {
+        const newTotal = prev + amount;
+
+        // AsyncStorage ga saqlash
+        (async () => {
+          try {
+            // 1. Foydalanuvchi ma'lumotlarini olish
+            const userDataStr = await AsyncStorage.getItem("user");
+            if (userDataStr) {
+              const userData = JSON.parse(userDataStr);
+
+              // 2. Yangi coins qiymatini qo'shish
+              userData.coins = newTotal;
+
+              // 3. Yangilangan ma'lumotni saqlash
+              await AsyncStorage.setItem("user", JSON.stringify(userData));
+              console.log(
+                `Coins updated and saved: ${prev} -> ${newTotal} (+${amount})`
+              );
+            }
+          } catch (error) {
+            console.error("Error saving coins to AsyncStorage:", error);
+          }
+        })();
+
+        return newTotal;
+      });
+    } catch (error) {
+      console.error("Error adding coins:", error);
+    }
   };
 
   const handleCardSelect = (cardId: number, level: string) => {
     setSelectedCardId(cardId);
     setSelectedCardTitle(level);
-    setCurrentScreen("SuggestedLessons");
+    navigateToScreen(
+      "SuggestedLessons",
+      `${level} darajasidagi darslar yuklanmoqda...`,
+      level
+    );
   };
 
   // Progress 100% bo'lganda, keyingi darsni ochish funksiyasi
@@ -447,12 +578,13 @@ const App = () => {
     setSelectedLessonId(lessonId);
     // Get words for this lesson from words.ts
     const lessonWords = getWordsByCardAndLesson(selectedCardId, lessonId);
+    const lessonName = `${selectedCardTitle} - Dars ${lessonId}`;
     setCurrentLesson({
       id: `${selectedCardId}-${lessonId}`,
-      name: `${selectedCardTitle} - Dars ${lessonId}`,
+      name: lessonName,
       words: lessonWords,
     });
-    setCurrentScreen("Game");
+    navigateToScreen("Game", "Dars tayyorlanmoqda...", lessonName);
   };
 
   if (!fontsLoaded) {
@@ -475,7 +607,9 @@ const App = () => {
         <View style={styles.bottomNavigation}>
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => setCurrentScreen("Home")}
+            onPress={() =>
+              navigateToScreen("Home", "Bosh sahifa yuklanmoqda...")
+            }
           >
             <FontAwesome5
               name="home"
@@ -494,7 +628,9 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => setCurrentScreen("MyLessons")}
+            onPress={() =>
+              navigateToScreen("MyLessons", "Darslarim yuklanmoqda...")
+            }
           >
             <FontAwesome5
               name="book"
@@ -513,7 +649,9 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => setCurrentScreen("Courses")}
+            onPress={() =>
+              navigateToScreen("Courses", "Kurslar yuklanmoqda...")
+            }
           >
             <FontAwesome5
               name="graduation-cap"
@@ -532,7 +670,9 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => setCurrentScreen("Dictionary")}
+            onPress={() =>
+              navigateToScreen("Dictionary", "Lug'at yuklanmoqda...", "Lug'at")
+            }
           >
             <FontAwesome5
               name="book-open"
@@ -551,7 +691,9 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => setCurrentScreen("Profile")}
+            onPress={() =>
+              navigateToScreen("Profile", "Profil yuklanmoqda...", "Profil")
+            }
           >
             <FontAwesome5
               name="user"
@@ -568,6 +710,11 @@ const App = () => {
             </Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* Show loading screen during transitions */}
+      {isTransitioning && (
+        <LoadingScreen message={transitionMessage} title={transitionTitle} />
       )}
     </View>
   );

@@ -81,22 +81,41 @@ const CoursesScreen: React.FC<Props> = ({
   // Kurs sotib olish
   const handlePurchaseCourse = async (course: GrammarCourse) => {
     try {
+      // Coins yetarli ekanligini tekshirish
       if (userCoins < course.price) {
-        alert("Yetarli tangalar mavjud emas!");
+        alert(
+          "Yetarli tanga yo'q. Ko'proq darslarni tugatib tanga to'plashingiz mumkin."
+        );
         return;
       }
 
-      const success = await coursesService.purchaseCourse(course.id, userCoins);
-      if (success) {
-        // Foydalanuvchi balansini yangilash
+      // Kursni sotib olish uchun so'rov
+      const result = await coursesService.purchaseCourse(course.id);
+
+      if (result) {
+        // Coins yangilash
         const newCoins = userCoins - course.price;
         setUserCoins(newCoins);
 
+        // App state ni yangilash
         if (setCoins) {
           setCoins(newCoins);
         }
 
-        await AsyncStorage.setItem("coins", newCoins.toString());
+        // User ma'lumotini AsyncStorage'da yangilash
+        try {
+          const userDataStr = await AsyncStorage.getItem("user");
+          if (userDataStr) {
+            const userData = JSON.parse(userDataStr);
+            userData.coins = newCoins;
+            await AsyncStorage.setItem("user", JSON.stringify(userData));
+            console.log(
+              `User coins updated in storage: ${userCoins} -> ${newCoins}`
+            );
+          }
+        } catch (error) {
+          console.error("Error updating user coins in storage:", error);
+        }
 
         // Kurslarni yangilash
         loadCourses();

@@ -9,11 +9,14 @@ import {
   Platform,
   ScrollView,
   TextInput,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import { useFonts, Lexend_400Regular } from "@expo-google-fonts/lexend";
 import progressService from "../services/progressService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import LoadingScreen from "../components/LoadingScreen";
 
 const STATUSBAR_HEIGHT =
   Platform.OS === "ios" ? 44 : StatusBar.currentHeight || 0;
@@ -119,12 +122,14 @@ const MemorizeStage = ({
   onSelect,
   onNext,
   selectedOption,
+  styles,
 }: {
   word: Word;
   options: string[];
   onSelect: (option: string) => void;
   onNext: () => void;
   selectedOption: string | null;
+  styles: any;
 }) => {
   const isCorrect = selectedOption === word.uzbek;
 
@@ -170,23 +175,23 @@ const MemorizeStage = ({
   };
 
   return (
-  <View style={styles.gameContent}>
-    <Text style={styles.englishWord}>{word.english}</Text>
-    <View style={styles.optionsContainer}>
-      {options.map((option, index) => (
-        <TouchableOpacity
-          key={index}
-          style={[
+    <View style={styles.gameContent}>
+      <Text style={styles.englishWord}>{word.english}</Text>
+      <View style={styles.optionsContainer}>
+        {options.map((option, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
               ...getOptionStyle(option),
-            index % 2 === 0 ? { marginRight: 10 } : {},
-          ]}
+              index % 2 === 0 ? { marginRight: 10 } : {},
+            ]}
             onPress={() => !selectedOption && onSelect(option)}
             disabled={selectedOption !== null}
-        >
+          >
             <Text style={getTextStyle(option)}>{option}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <TouchableOpacity
         style={[
@@ -205,8 +210,8 @@ const MemorizeStage = ({
           Keyingi
         </Text>
       </TouchableOpacity>
-  </View>
-);
+    </View>
+  );
 };
 
 // Match Stage Component
@@ -219,6 +224,7 @@ const MatchStage = ({
   onSelectUzbek,
   onMatch,
   onMismatch,
+  styles,
 }: {
   words: Word[];
   matchedPairs: { english: string; uzbek: string }[];
@@ -228,6 +234,7 @@ const MatchStage = ({
   onSelectUzbek: (word: string) => void;
   onMatch: (english: string, uzbek: string) => void;
   onMismatch: () => void;
+  styles: any;
 }) => {
   const [isWrongMatch, setIsWrongMatch] = useState(false);
   const [shuffledEnglishWords, setShuffledEnglishWords] = useState<string[]>(
@@ -355,11 +362,13 @@ const ArrangeStage = ({
   arrangedLetters,
   onSelectLetter,
   onReset,
+  styles,
 }: {
   word: Word;
   arrangedLetters: string[];
   onSelectLetter: (letter: string, index: number) => void;
   onReset: () => void;
+  styles: any;
 }) => {
   const [shuffledLetters, setShuffledLetters] = useState<string[]>([]);
   const [usedIndices, setUsedIndices] = useState<number[]>([]);
@@ -457,10 +466,12 @@ const WriteStage = ({
   word,
   mistakes,
   onSubmit,
+  styles,
 }: {
   word: Word;
   mistakes: number;
   onSubmit: (answer: string) => void;
+  styles: any;
 }) => {
   const [answer, setAnswer] = useState("");
 
@@ -498,8 +509,446 @@ const WriteStage = ({
 };
 
 const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: "white",
+    },
+    headerContainer: {
+      backgroundColor: "#3C5BFF",
+      paddingTop: STATUSBAR_HEIGHT,
+      paddingBottom: 0,
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: 20,
+      shadowColor: "#3C5BFF",
+      shadowOffset: {
+        width: 0,
+        height: 3,
+      },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 4,
+      zIndex: 1,
+      overflow: "hidden",
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingTop: 20,
+      paddingBottom: 35,
+      paddingHorizontal: 20,
+    },
+    backButton: {
+      padding: 5,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    headerTitle: {
+      color: "white",
+      fontSize: 17,
+      fontFamily: "Lexend_400Regular",
+      flex: 1,
+      textAlign: "center",
+      marginHorizontal: 10,
+    },
+    scoreContainer: {
+      backgroundColor: "rgba(255, 255, 255, 0.1)",
+      paddingHorizontal: 15,
+      paddingVertical: 8,
+      borderRadius: 25,
+    },
+    scoreText: {
+      color: "white",
+      fontSize: 14,
+      fontFamily: "Lexend_400Regular",
+    },
+    progressBarContainer: {
+      height: 4,
+      backgroundColor: "#F0F0F0",
+      width: "100%",
+      marginTop: 0,
+      zIndex: 3,
+    },
+    progressBar: {
+      height: "100%",
+      backgroundColor: "#3C5BFF",
+    },
+    stagesContainer: {
+      flex: 1,
+      padding: 20,
+    },
+    stageCards: {
+      marginBottom: 20,
+    },
+    stageCard: {
+      backgroundColor: "white",
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: "rgba(60, 91, 255, 0.1)",
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.05,
+      shadowRadius: 3.84,
+      elevation: 2,
+    },
+    stageHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    stageIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: "rgba(60, 91, 255, 0.1)",
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+    },
+    stageInfo: {
+      flex: 1,
+    },
+    stageName: {
+      fontSize: 15,
+      color: "#333",
+      fontFamily: "Lexend_400Regular",
+    },
+    stageScore: {
+      backgroundColor: "rgba(60, 91, 255, 0.1)",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 10,
+    },
+    stageScoreText: {
+      fontSize: 13,
+      color: "#3C5BFF",
+      fontFamily: "Lexend_400Regular",
+    },
+    wordsSection: {
+      backgroundColor: "white",
+      borderRadius: 12,
+      padding: 15,
+      borderWidth: 1,
+      borderColor: "rgba(60, 91, 255, 0.1)",
+      marginBottom: 20,
+    },
+    wordsSectionTitle: {
+      fontSize: 18,
+      color: "#333",
+      fontFamily: "Lexend_400Regular",
+      marginBottom: 15,
+    },
+    wordsList: {},
+    wordItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: "rgba(60, 91, 255, 0.05)",
+    },
+    wordNumber: {
+      width: 30,
+      fontSize: 14,
+      color: "#666",
+      fontFamily: "Lexend_400Regular",
+    },
+    wordEnglish: {
+      flex: 1,
+      fontSize: 16,
+      color: "#333",
+      fontFamily: "Lexend_400Regular",
+    },
+    wordUzbek: {
+      flex: 1,
+      fontSize: 16,
+      color: "#666",
+      fontFamily: "Lexend_400Regular",
+      textAlign: "right",
+    },
+    gameContent: {
+      flex: 1,
+      padding: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    englishWord: {
+      fontSize: 32,
+      color: "#3C5BFF",
+      marginBottom: 30,
+      fontFamily: "Lexend_400Regular",
+    },
+    uzbekWord: {
+      fontSize: 32,
+      color: "#3C5BFF",
+      marginBottom: 30,
+      fontFamily: "Lexend_400Regular",
+    },
+    optionsContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      width: "100%",
+      maxWidth: 400,
+    },
+    optionButton: {
+      width: "48%",
+      backgroundColor: "#F5F5F5",
+      padding: 15,
+      borderRadius: 12,
+      marginBottom: 10,
+      borderWidth: 2,
+      borderColor: "#E0E0E0",
+    },
+    wrongOption: {
+      backgroundColor: "#FF4D4D",
+      borderColor: "#FF0000",
+    },
+    correctOption: {
+      backgroundColor: "#4CAF50",
+      borderColor: "#45A049",
+    },
+    optionText: {
+      fontSize: 16,
+      color: "#333",
+      textAlign: "center",
+      fontFamily: "Lexend_400Regular",
+    },
+    wrongOptionText: {
+      color: "white",
+    },
+    correctOptionText: {
+      color: "white",
+    },
+    matchContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      width: "100%",
+      paddingHorizontal: 20,
+    },
+    matchedPairsContainer: {
+      marginBottom: 20,
+      width: "100%",
+    },
+    matchedPair: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 10,
+    },
+    matchedEnglish: {
+      fontSize: 16,
+      color: "#4CAF50",
+      marginRight: 10,
+      fontFamily: "Lexend_400Regular",
+    },
+    matchedUzbek: {
+      fontSize: 16,
+      color: "#4CAF50",
+      marginLeft: 10,
+      fontFamily: "Lexend_400Regular",
+    },
+    englishWords: {
+      width: "48%",
+    },
+    uzbekWords: {
+      width: "48%",
+    },
+    matchWord: {
+      backgroundColor: "#F5F5F5",
+      padding: 12,
+      borderRadius: 10,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: "#E0E0E0",
+    },
+    selectedWord: {
+      backgroundColor: "#3C5BFF",
+      borderColor: "#3C5BFF",
+    },
+    matchedWord: {
+      backgroundColor: "#28a745",
+      borderColor: "#28a745",
+    },
+    mismatchWord: {
+      backgroundColor: "#FF1744",
+      borderColor: "#FF1744",
+    },
+    matchWordText: {
+      fontSize: 14,
+      color: "#333",
+      textAlign: "center",
+      fontFamily: "Lexend_400Regular",
+    },
+    selectedWordText: {
+      color: "white",
+    },
+    matchedWordText: {
+      color: "white",
+    },
+    mismatchWordText: {
+      color: "white",
+    },
+    arrangeContainer: {
+      width: "100%",
+      alignItems: "center",
+    },
+    arrangedWord: {
+      flexDirection: "row",
+      marginBottom: 30,
+      justifyContent: "center",
+      flexWrap: "wrap",
+    },
+    letterBox: {
+      width: 40,
+      height: 40,
+      borderWidth: 1,
+      borderColor: "#E0E0E0",
+      borderRadius: 8,
+      justifyContent: "center",
+      alignItems: "center",
+      margin: 4,
+      backgroundColor: "#F5F5F5",
+    },
+    correctLetter: {
+      backgroundColor: "#4CAF50",
+      borderColor: "#4CAF50",
+    },
+    wrongLetter: {
+      backgroundColor: "#FF5252",
+      borderColor: "#FF5252",
+    },
+    shuffledLetters: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+    },
+    letterButton: {
+      width: 40,
+      height: 40,
+      backgroundColor: "#3C5BFF",
+      borderRadius: 8,
+      justifyContent: "center",
+      alignItems: "center",
+      margin: 4,
+    },
+    letterText: {
+      fontSize: 18,
+      color: "white",
+      fontFamily: "Lexend_400Regular",
+    },
+    usedLetterButton: {
+      opacity: 0.3,
+    },
+    usedLetterText: {
+      opacity: 0.5,
+    },
+    writeContainer: {
+      width: "100%",
+      maxWidth: 400,
+    },
+    writeInput: {
+      width: "100%",
+      height: 50,
+      backgroundColor: "#F5F5F5",
+      borderWidth: 1,
+      borderColor: "#E0E0E0",
+      borderRadius: 12,
+      paddingHorizontal: 15,
+      fontSize: 16,
+      color: "#333",
+      fontFamily: "Lexend_400Regular",
+    },
+    mistakesContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      marginBottom: 20,
+    },
+    mistakeIndicator: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: "#E0E0E0",
+      marginHorizontal: 4,
+    },
+    mistakeIndicatorActive: {
+      backgroundColor: "#FF5252",
+    },
+    resetButton: {
+      padding: 10,
+      marginBottom: 20,
+    },
+    correctLetterText: {
+      color: "white",
+    },
+    wrongLetterText: {
+      color: "white",
+    },
+    nextButton: {
+      backgroundColor: "#3C5BFF",
+      paddingHorizontal: 30,
+      paddingVertical: 12,
+      borderRadius: 12,
+      marginTop: 30,
+    },
+    nextButtonDisabled: {
+      backgroundColor: "#E0E0E0",
+    },
+    nextButtonText: {
+      color: "white",
+      fontSize: 16,
+      fontFamily: "Lexend_400Regular",
+      textAlign: "center",
+    },
+    nextButtonTextDisabled: {
+      color: "#999",
+    },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: "#fff",
+    },
+    loadingContent: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
+    loadingImage: {
+      width: 200,
+      height: 200,
+      marginBottom: 30,
+    },
+    loadingTextContainer: {
+      alignItems: "center",
+    },
+    loadingTitle: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: "#3C5BFF",
+      marginBottom: 20,
+      textAlign: "center",
+    },
+    loadingIndicator: {
+      marginBottom: 20,
+    },
+    loadingText: {
+      fontSize: 16,
+      color: "#666",
+    },
+  });
+
+  // Game variables
   const [userCoins, setUserCoins] = useState<number>(0);
   const [lessonCompleted, setLessonCompleted] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [words] = useState<Word[]>(
     lesson.words.length > 0 ? lesson.words : MOCK_WORDS
   );
@@ -679,6 +1128,7 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
 
   useEffect(() => {
     const initialize = async () => {
+      setIsLoading(true);
       try {
         const token = await AsyncStorage.getItem("token");
         if (!token) {
@@ -712,8 +1162,14 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
 
         // Get progress and update UI
         await updateProgressUI();
+
+        // Add a short delay for smoother experience
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 1000);
       } catch (error) {
         console.error("Dars progressini boshlashda xatolik:", error);
+        setIsLoading(false);
       }
     };
 
@@ -987,29 +1443,29 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     const availableWords = words.slice(0, MAX_WORDS_PER_LESSON);
     const currentWord = availableWords[gameState.currentWordIndex];
 
-      setGameState((prev) => {
-        const newState = {
-          ...prev,
+    setGameState((prev) => {
+      const newState = {
+        ...prev,
         selectedOption: null,
         completedWords: [
           ...prev.completedWords,
           availableWords[prev.currentWordIndex].id,
         ],
-        };
+      };
 
-        if (prev.currentWordIndex < availableWords.length - 1) {
-          return {
-            ...newState,
-            currentWordIndex: prev.currentWordIndex + 1,
-          };
-        } else {
-          return {
-            ...newState,
-            currentStage: "stages",
-            currentWordIndex: 0,
-          };
-        }
-      });
+      if (prev.currentWordIndex < availableWords.length - 1) {
+        return {
+          ...newState,
+          currentWordIndex: prev.currentWordIndex + 1,
+        };
+      } else {
+        return {
+          ...newState,
+          currentStage: "stages",
+          currentWordIndex: 0,
+        };
+      }
+    });
   };
 
   const handleMatchStage = (english: string, uzbek: string) => {
@@ -1181,123 +1637,123 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     const totalWords = availableWords.length;
 
     return (
-    <ScrollView style={styles.stagesContainer}>
-      <View style={styles.stageCards}>
-        <TouchableOpacity
-          style={styles.stageCard}
-          onPress={() => handleStageSelect("memorize")}
-        >
-          <View style={styles.stageHeader}>
-            <View style={styles.stageIcon}>
-              <FontAwesome5 name="brain" size={20} color="#3C5BFF" />
-            </View>
-            <View style={styles.stageInfo}>
-              <Text style={styles.stageName}>So'zlarni yodlash</Text>
-            </View>
-            <View style={styles.stageScore}>
+      <ScrollView style={styles.stagesContainer}>
+        <View style={styles.stageCards}>
+          <TouchableOpacity
+            style={styles.stageCard}
+            onPress={() => handleStageSelect("memorize")}
+          >
+            <View style={styles.stageHeader}>
+              <View style={styles.stageIcon}>
+                <FontAwesome5 name="brain" size={20} color="#3C5BFF" />
+              </View>
+              <View style={styles.stageInfo}>
+                <Text style={styles.stageName}>So'zlarni yodlash</Text>
+              </View>
+              <View style={styles.stageScore}>
                 {gameState.stageProgress.memorize.completed ? (
-                <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
-              ) : (
-                <Text style={styles.stageScoreText}>
+                  <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
+                ) : (
+                  <Text style={styles.stageScoreText}>
                     {gameState.stageProgress.memorize.completedWords.length}/
                     {totalWords}
-                </Text>
-              )}
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.stageCard}
-          onPress={() => handleStageSelect("match")}
-        >
-          <View style={styles.stageHeader}>
-            <View style={styles.stageIcon}>
-              <FontAwesome5 name="exchange-alt" size={20} color="#3C5BFF" />
-            </View>
-            <View style={styles.stageInfo}>
-              <Text style={styles.stageName}>So'zlarni takrorlash</Text>
-            </View>
-            <View style={styles.stageScore}>
+          <TouchableOpacity
+            style={styles.stageCard}
+            onPress={() => handleStageSelect("match")}
+          >
+            <View style={styles.stageHeader}>
+              <View style={styles.stageIcon}>
+                <FontAwesome5 name="exchange-alt" size={20} color="#3C5BFF" />
+              </View>
+              <View style={styles.stageInfo}>
+                <Text style={styles.stageName}>So'zlarni takrorlash</Text>
+              </View>
+              <View style={styles.stageScore}>
                 {gameState.stageProgress.match.completed ? (
-                <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
-              ) : (
-                <Text style={styles.stageScoreText}>
+                  <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
+                ) : (
+                  <Text style={styles.stageScoreText}>
                     {Math.floor(gameState.stageProgress.match.progress / 10)}/
                     {totalWords}
-                </Text>
-              )}
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.stageCard}
-          onPress={() => handleStageSelect("arrange")}
-        >
-          <View style={styles.stageHeader}>
-            <View style={styles.stageIcon}>
+          <TouchableOpacity
+            style={styles.stageCard}
+            onPress={() => handleStageSelect("arrange")}
+          >
+            <View style={styles.stageHeader}>
+              <View style={styles.stageIcon}>
                 <FontAwesome5
                   name="sort-alpha-down"
                   size={20}
                   color="#3C5BFF"
                 />
-            </View>
-            <View style={styles.stageInfo}>
-              <Text style={styles.stageName}>So'zlarni mustahkamlash</Text>
-            </View>
-            <View style={styles.stageScore}>
+              </View>
+              <View style={styles.stageInfo}>
+                <Text style={styles.stageName}>So'zlarni mustahkamlash</Text>
+              </View>
+              <View style={styles.stageScore}>
                 {gameState.stageProgress.arrange.completed ? (
-                <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
-              ) : (
-                <Text style={styles.stageScoreText}>
+                  <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
+                ) : (
+                  <Text style={styles.stageScoreText}>
                     {gameState.stageProgress.arrange.completedWords.length}/
                     {totalWords}
-                </Text>
-              )}
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.stageCard}
-          onPress={() => handleStageSelect("write")}
-        >
-          <View style={styles.stageHeader}>
-            <View style={styles.stageIcon}>
-              <FontAwesome5 name="pencil-alt" size={20} color="#3C5BFF" />
-            </View>
-            <View style={styles.stageInfo}>
-              <Text style={styles.stageName}>So'zlarni yozish</Text>
-            </View>
-            <View style={styles.stageScore}>
+          <TouchableOpacity
+            style={styles.stageCard}
+            onPress={() => handleStageSelect("write")}
+          >
+            <View style={styles.stageHeader}>
+              <View style={styles.stageIcon}>
+                <FontAwesome5 name="pencil-alt" size={20} color="#3C5BFF" />
+              </View>
+              <View style={styles.stageInfo}>
+                <Text style={styles.stageName}>So'zlarni yozish</Text>
+              </View>
+              <View style={styles.stageScore}>
                 {gameState.stageProgress.write.completed ? (
-                <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
-              ) : (
-                <Text style={styles.stageScoreText}>
+                  <FontAwesome5 name="check-circle" size={18} color="#4CAF50" />
+                ) : (
+                  <Text style={styles.stageScoreText}>
                     {gameState.stageProgress.write.completedWords.length}/
                     {totalWords}
-                </Text>
-              )}
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.wordsSection}>
-        <Text style={styles.wordsSectionTitle}>O'rganiladigan so'zlar</Text>
-        <View style={styles.wordsList}>
-          {words.slice(0, MAX_WORDS_PER_LESSON).map((word, index) => (
-            <View key={word.id} style={styles.wordItem}>
-              <Text style={styles.wordNumber}>{index + 1}.</Text>
-              <Text style={styles.wordEnglish}>{word.english}</Text>
-              <Text style={styles.wordUzbek}>{word.uzbek}</Text>
-            </View>
-          ))}
+          </TouchableOpacity>
         </View>
-      </View>
-    </ScrollView>
-  );
+
+        <View style={styles.wordsSection}>
+          <Text style={styles.wordsSectionTitle}>O'rganiladigan so'zlar</Text>
+          <View style={styles.wordsList}>
+            {words.slice(0, MAX_WORDS_PER_LESSON).map((word, index) => (
+              <View key={word.id} style={styles.wordItem}>
+                <Text style={styles.wordNumber}>{index + 1}.</Text>
+                <Text style={styles.wordEnglish}>{word.english}</Text>
+                <Text style={styles.wordUzbek}>{word.uzbek}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    );
   };
 
   const renderGameStage = () => {
@@ -1316,6 +1772,7 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
             onSelect={handleOptionSelect}
             onNext={handleNext}
             selectedOption={gameState.selectedOption}
+            styles={styles}
           />
         ) : null;
       case "match":
@@ -1341,6 +1798,7 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
             onMismatch={() => {
               // Handle mismatch
             }}
+            styles={styles}
           />
         );
       case "arrange":
@@ -1357,6 +1815,7 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
                 arrangedLetters: [],
               }));
             }}
+            styles={styles}
           />
         ) : null;
       case "write":
@@ -1373,6 +1832,7 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
                 handleWrongAnswer();
               }
             }}
+            styles={styles}
           />
         ) : null;
       default:
@@ -1384,6 +1844,10 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     return null;
   }
 
+  if (isLoading) {
+    return <LoadingScreen color="#3C5BFF" />;
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar
@@ -1392,36 +1856,36 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
         translucent={true}
       />
       <View style={styles.headerContainer}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() =>
-            gameState.currentStage === "stages"
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() =>
+              gameState.currentStage === "stages"
                 ? setScreen("SuggestedLessons")
-              : setGameState((prev) => ({ ...prev, currentStage: "stages" }))
-          }
-        >
-          <FontAwesome5
+                : setGameState((prev) => ({ ...prev, currentStage: "stages" }))
+            }
+          >
+            <FontAwesome5
               name={
                 gameState.currentStage === "stages" ? "arrow-left" : "times"
               }
-            size={20}
-            color="white"
-          />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{lesson.name}</Text>
-        <View style={styles.scoreContainer}>
-          <Text style={styles.scoreText}>
-            {gameState.currentStage === "stages"
+              size={20}
+              color="white"
+            />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{lesson.name}</Text>
+          <View style={styles.scoreContainer}>
+            <Text style={styles.scoreText}>
+              {gameState.currentStage === "stages"
                 ? `${progress()}%`
-              : `${gameState.currentWordIndex + 1}/${Math.min(
-                  words.length,
-                  MAX_WORDS_PER_LESSON
-                )}`}
-          </Text>
+                : `${gameState.currentWordIndex + 1}/${Math.min(
+                    words.length,
+                    MAX_WORDS_PER_LESSON
+                  )}`}
+            </Text>
+          </View>
         </View>
-      </View>
-      <View style={styles.progressBarContainer}>
+        <View style={styles.progressBarContainer}>
           <View style={[styles.progressBar, { width: `${progress()}%` }]} />
         </View>
       </View>
@@ -1430,409 +1894,5 @@ const LessonGameScreen: React.FC<Props> = ({ setScreen, lesson }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "white",
-  },
-  headerContainer: {
-    backgroundColor: "#3C5BFF",
-    paddingTop: STATUSBAR_HEIGHT,
-    paddingBottom: 0,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: "#3C5BFF",
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-    zIndex: 1,
-    overflow: "hidden",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 20,
-    paddingBottom: 35,
-    paddingHorizontal: 20,
-  },
-  backButton: {
-    padding: 5,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    color: "white",
-    fontSize: 17,
-    fontFamily: "Lexend_400Regular",
-    flex: 1,
-    textAlign: "center",
-    marginHorizontal: 10,
-  },
-  scoreContainer: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 25,
-  },
-  scoreText: {
-    color: "white",
-    fontSize: 14,
-    fontFamily: "Lexend_400Regular",
-  },
-  progressBarContainer: {
-    height: 4,
-    backgroundColor: "#F0F0F0",
-    width: "100%",
-    marginTop: 0,
-    zIndex: 3,
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: "#3C5BFF",
-  },
-  stagesContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  stageCards: {
-    marginBottom: 20,
-  },
-  stageCard: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(60, 91, 255, 0.1)",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3.84,
-    elevation: 2,
-  },
-  stageHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  stageIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(60, 91, 255, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  stageInfo: {
-    flex: 1,
-  },
-  stageName: {
-    fontSize: 15,
-    color: "#333",
-    fontFamily: "Lexend_400Regular",
-  },
-  stageScore: {
-    backgroundColor: "rgba(60, 91, 255, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  stageScoreText: {
-    fontSize: 13,
-    color: "#3C5BFF",
-    fontFamily: "Lexend_400Regular",
-  },
-  wordsSection: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: "rgba(60, 91, 255, 0.1)",
-    marginBottom: 20,
-  },
-  wordsSectionTitle: {
-    fontSize: 18,
-    color: "#333",
-    fontFamily: "Lexend_400Regular",
-    marginBottom: 15,
-  },
-  wordsList: {},
-  wordItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(60, 91, 255, 0.05)",
-  },
-  wordNumber: {
-    width: 30,
-    fontSize: 14,
-    color: "#666",
-    fontFamily: "Lexend_400Regular",
-  },
-  wordEnglish: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-    fontFamily: "Lexend_400Regular",
-  },
-  wordUzbek: {
-    flex: 1,
-    fontSize: 16,
-    color: "#666",
-    fontFamily: "Lexend_400Regular",
-    textAlign: "right",
-  },
-  gameContent: {
-    flex: 1,
-    padding: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  englishWord: {
-    fontSize: 32,
-    color: "#3C5BFF",
-    marginBottom: 30,
-    fontFamily: "Lexend_400Regular",
-  },
-  uzbekWord: {
-    fontSize: 32,
-    color: "#3C5BFF",
-    marginBottom: 30,
-    fontFamily: "Lexend_400Regular",
-  },
-  optionsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    width: "100%",
-    maxWidth: 400,
-  },
-  optionButton: {
-    width: "48%",
-    backgroundColor: "#F5F5F5",
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 2,
-    borderColor: "#E0E0E0",
-  },
-  wrongOption: {
-    backgroundColor: "#FF4D4D",
-    borderColor: "#FF0000",
-  },
-  correctOption: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#45A049",
-  },
-  optionText: {
-    fontSize: 16,
-    color: "#333",
-    textAlign: "center",
-    fontFamily: "Lexend_400Regular",
-  },
-  wrongOptionText: {
-    color: "white",
-  },
-  correctOptionText: {
-    color: "white",
-  },
-  matchContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    paddingHorizontal: 20,
-  },
-  matchedPairsContainer: {
-    marginBottom: 20,
-    width: "100%",
-  },
-  matchedPair: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  matchedEnglish: {
-    fontSize: 16,
-    color: "#4CAF50",
-    marginRight: 10,
-    fontFamily: "Lexend_400Regular",
-  },
-  matchedUzbek: {
-    fontSize: 16,
-    color: "#4CAF50",
-    marginLeft: 10,
-    fontFamily: "Lexend_400Regular",
-  },
-  englishWords: {
-    width: "48%",
-  },
-  uzbekWords: {
-    width: "48%",
-  },
-  matchWord: {
-    backgroundColor: "#F5F5F5",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  selectedWord: {
-    backgroundColor: "#3C5BFF",
-    borderColor: "#3C5BFF",
-  },
-  matchedWord: {
-    backgroundColor: "#28a745",
-    borderColor: "#28a745",
-  },
-  mismatchWord: {
-    backgroundColor: "#FF1744",
-    borderColor: "#FF1744",
-  },
-  matchWordText: {
-    fontSize: 14,
-    color: "#333",
-    textAlign: "center",
-    fontFamily: "Lexend_400Regular",
-  },
-  selectedWordText: {
-    color: "white",
-  },
-  matchedWordText: {
-    color: "white",
-  },
-  mismatchWordText: {
-    color: "white",
-  },
-  arrangeContainer: {
-    width: "100%",
-    alignItems: "center",
-  },
-  arrangedWord: {
-    flexDirection: "row",
-    marginBottom: 30,
-    justifyContent: "center",
-    flexWrap: "wrap",
-  },
-  letterBox: {
-    width: 40,
-    height: 40,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    margin: 4,
-    backgroundColor: "#F5F5F5",
-  },
-  correctLetter: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
-  },
-  wrongLetter: {
-    backgroundColor: "#FF5252",
-    borderColor: "#FF5252",
-  },
-  shuffledLetters: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  letterButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: "#3C5BFF",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    margin: 4,
-  },
-  letterText: {
-    fontSize: 18,
-    color: "white",
-    fontFamily: "Lexend_400Regular",
-  },
-  usedLetterButton: {
-    opacity: 0.3,
-  },
-  usedLetterText: {
-    opacity: 0.5,
-  },
-  writeContainer: {
-    width: "100%",
-    maxWidth: 400,
-  },
-  writeInput: {
-    width: "100%",
-    height: 50,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    fontSize: 16,
-    color: "#333",
-    fontFamily: "Lexend_400Regular",
-  },
-  mistakesContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  mistakeIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#E0E0E0",
-    marginHorizontal: 4,
-  },
-  mistakeIndicatorActive: {
-    backgroundColor: "#FF5252",
-  },
-  resetButton: {
-    padding: 10,
-    marginBottom: 20,
-  },
-  correctLetterText: {
-    color: "white",
-  },
-  wrongLetterText: {
-    color: "white",
-  },
-  nextButton: {
-    backgroundColor: "#3C5BFF",
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 30,
-  },
-  nextButtonDisabled: {
-    backgroundColor: "#E0E0E0",
-  },
-  nextButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontFamily: "Lexend_400Regular",
-    textAlign: "center",
-  },
-  nextButtonTextDisabled: {
-    color: "#999",
-  },
-});
 
 export default LessonGameScreen;
