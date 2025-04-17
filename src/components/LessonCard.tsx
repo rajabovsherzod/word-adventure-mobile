@@ -182,6 +182,9 @@ const LessonCard: React.FC<LessonCardProps> = ({
   if (level === "Intermediate") numericLevel = "2";
   if (level === "Advanced") numericLevel = "3";
 
+  // Dars 100% tugatilganligini tekshirish
+  const isLessonCompleted = progress === 100;
+
   // Debug
   // console.log(`LessonCard ${lessonId} rendering: Progress=${progress}, Level=${level}, StageStatus:`, stageStatus);
 
@@ -207,10 +210,15 @@ const LessonCard: React.FC<LessonCardProps> = ({
             {Math.round(progress)}%
           </Text>
         </View>
-        {!isLocked && (
+        {!isLocked && !isLessonCompleted && (
           <View style={styles.coinsContainer}>
             <FontAwesome5 name="bitcoin" size={12} color="#FFD700" />
-            <Text style={styles.coinsText}>+5</Text>
+            <Text style={styles.coinsText}>+10</Text>
+          </View>
+        )}
+        {!isLocked && isLessonCompleted && (
+          <View style={styles.completedContainer}>
+            <Text style={styles.completedText}>Bajarildi</Text>
           </View>
         )}
       </View>
@@ -291,6 +299,20 @@ const styles = StyleSheet.create({
   coinsText: {
     marginLeft: 4,
     fontSize: 12,
+    color: "#FFFFFF",
+    fontFamily: "Lexend_400Regular",
+    fontWeight: "600",
+  },
+  completedContainer: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  completedText: {
+    fontSize: 10,
     color: "#FFFFFF",
     fontFamily: "Lexend_400Regular",
     fontWeight: "600",
