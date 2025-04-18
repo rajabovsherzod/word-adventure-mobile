@@ -2,38 +2,73 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
-// Base URL for API
+// API Base URL ni dinamik aniqlash
 let BASE_URL = "";
 
-// IP manzili - kompyuteringizning haqiqiy IP manzili
-const SERVER_IP = "192.168.1.40";
+// Mahalliy server port
+const SERVER_PORT = "3000";
 
-// Set axios defaults
-if (Platform.OS === "android") {
-  if (__DEV__) {
-    // Fizik qurilma uchun
-    BASE_URL = `http://${SERVER_IP}:3000/api`;
-  } else {
-    // Production muhitda
-    BASE_URL = "https://word-adventure-api.com/api";
+// Dinamik URL aniqlovchi funksiya
+const getBaseUrl = async () => {
+  try {
+    // Avval saqlangan manzilni tekshirish
+    const savedUrl = await AsyncStorage.getItem("API_BASE_URL");
+    if (savedUrl) {
+      console.log("API: Using saved custom URL:", savedUrl);
+      return savedUrl;
+    }
+
+    // Android emulator
+    if (Platform.OS === "android" && __DEV__) {
+      // Android emulator o'zining maxsus IP manzili
+      return `http://10.0.2.2:${SERVER_PORT}/api`;
+    }
+
+    // iOS simulator
+    if (Platform.OS === "ios" && __DEV__) {
+      return `http://localhost:${SERVER_PORT}/api`;
+    }
+
+    // Development muhitida fizik qurilma (Wi-Fi orqali)
+    if (__DEV__) {
+      // O'zingizning kompyuteringiz IP manzili
+      const defaultDeviceUrl = `http://192.168.1.40:${SERVER_PORT}/api`;
+      return defaultDeviceUrl;
+    }
+
+    // Production muhit
+    return "https://word-adventure-api.com/api";
+  } catch (error) {
+    console.error("API: Error getting base URL:", error);
+    // Xatolik yuz berganda default URL ga qaytish
+    if (__DEV__) {
+      return `http://192.168.1.40:${SERVER_PORT}/api`;
+    }
+    return "https://word-adventure-api.com/api";
   }
-} else if (Platform.OS === "ios") {
-  if (__DEV__) {
-    // iOS simulyator uchun
-    BASE_URL = "http://localhost:3000/api";
-  } else {
-    // Production muhitda
-    BASE_URL = "https://word-adventure-api.com/api";
+};
+
+// Dastlabki URL o'rnatish
+getBaseUrl().then((url) => {
+  BASE_URL = url;
+  console.log("API using URL:", BASE_URL);
+  console.log("Platform:", Platform.OS, "DEV mode:", __DEV__);
+});
+
+// API konfiguratsiyasini yangilash funksiyasi
+export const updateApiBaseUrl = async (newUrl: string) => {
+  try {
+    await AsyncStorage.setItem("API_BASE_URL", newUrl);
+    BASE_URL = newUrl;
+    console.log("API: Base URL updated to:", newUrl);
+    return true;
+  } catch (error) {
+    console.error("API: Error updating base URL:", error);
+    return false;
   }
-} else {
-  // Qolgan qurilmalar uchun
-  BASE_URL = `http://${SERVER_IP}:3000/api`;
-}
+};
 
-console.log("API using URL:", BASE_URL);
-console.log("Platform:", Platform.OS, "DEV mode:", __DEV__);
-console.log("Using server IP:", SERVER_IP);
-
+// Axios instance
 export const api = axios.create({
   baseURL: BASE_URL,
   headers: {
@@ -42,10 +77,14 @@ export const api = axios.create({
   timeout: 30000, // 30 sekund (oshirilgan timeout)
 });
 
-// Request interceptor - so'rovlarni kuzatish
+// URL ni har bir so'rovda dinamik yangilash
 api.interceptors.request.use(
   async (config) => {
     try {
+      // Har bir so'rovda eng so'nggi URL ni olish
+      const currentBaseUrl = await getBaseUrl();
+      config.baseURL = currentBaseUrl;
+
       console.log("API Request:", config.method?.toUpperCase(), config.url);
       console.log("API Request URL:", config.baseURL + config.url);
       console.log("API Request Body:", config.data);
