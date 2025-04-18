@@ -36,9 +36,7 @@ const DictionaryScreen: React.FC<Props> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Word[]>([]);
-  const [selectedWord, setSelectedWord] = useState<Word | null>(
-    initialSelectedWord
-  );
+  const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [activeTab, setActiveTab] = useState<"english" | "uzbek">("english");
   const [isLoading, setIsLoading] = useState(false);
   const [alphabeticalWords, setAlphabeticalWords] = useState<Word[]>([]);
@@ -71,10 +69,6 @@ const DictionaryScreen: React.FC<Props> = ({
   const handleWordSelect = (word: Word) => {
     setSelectedWord(word);
     onWordSelect(word);
-  };
-
-  const handleBack = () => {
-    setScreen("Home");
   };
 
   if (!fontsLoaded) {
@@ -150,10 +144,7 @@ const DictionaryScreen: React.FC<Props> = ({
       <StatusBar backgroundColor="#3C5BFF" barStyle="light-content" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <FontAwesome5 name="arrow-left" size={20} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dictionary</Text>
+        <Text style={styles.headerTitle}>Lug'at</Text>
       </View>
 
       {!selectedWord ? (
@@ -259,17 +250,26 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: "#3C5BFF",
-    padding: 16,
-    flexDirection: "row",
+    paddingTop: 20,
+    paddingBottom: 35,
+    justifyContent: "center",
     alignItems: "center",
-  },
-  backButton: {
-    marginRight: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: "#3C5BFF",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   headerTitle: {
     color: "white",
-    fontSize: 20,
+    fontSize: 17,
     fontFamily: "Lexend_600SemiBold",
+    textAlign: "center",
   },
   searchContainer: {
     padding: 16,
