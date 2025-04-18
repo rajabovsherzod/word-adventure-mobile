@@ -67,7 +67,7 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
     return <LoadingScreen color="#3C5BFF" />;
   }
 
-  return (
+    return (
     <View style={styles.container}>
       <Header
         title={cardTitle}
@@ -82,7 +82,7 @@ const SuggestedLessonsScreen: React.FC<Props> = ({
         onLessonPress={handleLessonPress}
         onLessonComplete={(lessonId) => onLessonComplete(cardTitle, lessonId)}
       />
-    </View>
+      </View>
   );
 };
 
