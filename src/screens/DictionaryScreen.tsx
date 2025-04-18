@@ -16,7 +16,12 @@ import {
   Lexend_600SemiBold,
 } from "@expo-google-fonts/lexend";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
-import { Word, searchWords, getWordById } from "../data/words";
+import {
+  Word,
+  searchWords,
+  getWordById,
+  getAllWordsSorted,
+} from "../data/words";
 
 type Props = {
   setScreen: (screen: string) => void;
@@ -36,11 +41,16 @@ const DictionaryScreen: React.FC<Props> = ({
   );
   const [activeTab, setActiveTab] = useState<"english" | "uzbek">("english");
   const [isLoading, setIsLoading] = useState(false);
+  const [alphabeticalWords, setAlphabeticalWords] = useState<Word[]>([]);
 
   let [fontsLoaded] = useFonts({
     Lexend_400Regular,
     Lexend_600SemiBold,
   });
+
+  useEffect(() => {
+    setAlphabeticalWords(getAllWordsSorted(activeTab));
+  }, [activeTab]);
 
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -210,28 +220,29 @@ const DictionaryScreen: React.FC<Props> = ({
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>Searching...</Text>
             </View>
-          ) : searchResults.length > 0 ? (
+          ) : searchQuery.length > 0 ? (
+            searchResults.length > 0 ? (
+              <FlatList
+                data={searchResults}
+                renderItem={renderSearchResult}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.resultsList}
+              />
+            ) : (
+              <View style={styles.noResultsContainer}>
+                <Text style={styles.noResultsText}>No results found</Text>
+              </View>
+            )
+          ) : (
             <FlatList
-              data={searchResults}
+              data={alphabeticalWords}
               renderItem={renderSearchResult}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.resultsList}
+              ListHeaderComponent={
+                <Text style={styles.sectionTitle}>All Words (A-Z)</Text>
+              }
             />
-          ) : searchQuery.length > 0 ? (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>No results found</Text>
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Image
-                source={require("../../assets/images/main_background.png")}
-                style={styles.emptyImage}
-                resizeMode="contain"
-              />
-              <Text style={styles.emptyText}>
-                Search for words in English or Uzbek
-              </Text>
-            </View>
           )}
         </>
       ) : (
@@ -457,6 +468,14 @@ const styles = StyleSheet.create({
     color: "#666",
     fontStyle: "italic",
     paddingVertical: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: "Lexend_600SemiBold",
+    color: "#333",
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
 });
 

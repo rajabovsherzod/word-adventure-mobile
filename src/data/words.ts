@@ -1300,24 +1300,183 @@ export const getWordById = (id: string): Word | null => {
 
 // Helper funksiyalar
 function getWordDefinition(word: Word, language: "english" | "uzbek"): string {
-  // Bu yerda haqiqiy ma'lumotlar bo'lmasa ham, ishlaydigan fake definitionlar qaytaramiz
+  // Eng ko'p ishlatilgan so'zlar uchun real definitionlar
+  const englishDefinitions: { [key: string]: string } = {
+    apple: "A round fruit with red, yellow, or green skin and crisp flesh.",
+    book: "A written or printed work consisting of pages glued or sewn together along one side and bound in covers.",
+    cat: "A small domesticated carnivorous mammal with soft fur, a short snout, and retractile claws.",
+    dog: "A domesticated carnivorous mammal that typically has a long snout and an acute sense of smell.",
+    house:
+      "A building for human habitation, especially one that is lived in by a family or small group of people.",
+    tree: "A perennial plant with a single woody stem or trunk, growing to a considerable height and bearing lateral branches.",
+    sun: "The star around which the earth orbits and provides the light and warmth necessary for life.",
+    water:
+      "A colorless, transparent, odorless liquid that forms the seas, lakes, rivers, and rain.",
+    car: "A road vehicle powered by an engine and designed to carry a small number of passengers.",
+    table:
+      "A piece of furniture with a flat top and one or more legs, providing a surface for eating, writing, or working.",
+    door: "A hinged, sliding, or revolving barrier at the entrance to a building, room, or vehicle.",
+    window:
+      "An opening in the wall or roof of a building or vehicle, fitted with glass in a frame to admit light or air.",
+    pen: "An instrument for writing or drawing with ink, typically consisting of a metal nib or ball.",
+    chair:
+      "A separate seat for one person, typically with a back and four legs.",
+    food: "Any nutritious substance that people or animals eat or drink to maintain life and growth.",
+    friend:
+      "A person whom one knows and with whom one has a bond of mutual affection.",
+    school:
+      "An institution for educating children or people under college age.",
+    teacher: "A person who teaches, especially in a school.",
+    student: "A person who is studying at a school, college, or university.",
+    work: "Activity involving mental or physical effort done in order to achieve a purpose or result.",
+  };
+
+  const uzbekDefinitions: { [key: string]: string } = {
+    olma: "Qizil, sariq yoki yashil po'stli va qattiq etli dumaloq meva.",
+    kitob:
+      "Bir tomoni yopishtirilgan yoki tikilgan va muqovalangan sahifalardan iborat yozma yoki bosma asar.",
+    mushuk:
+      "Yumshoq junli, kalta tumshukli va tortib olinadigan tirnoqlari bor kichik uy yirtqich hayvoni.",
+    it: "Odatda uzun tumshukli va hid sezish qobiliyati o'tkir bo'lgan uy yirtqich hayvoni.",
+    uy: "Inson yashashi uchun mo'ljallangan bino, ayniqsa oila yoki kichik guruh odamlar yashaydigan bino.",
+    daraxt:
+      "Tanasi yog'ochsimon bo'lgan, ancha balandlikka o'sadigan va yon shoxlari bor ko'p yillik o'simlik.",
+    quyosh:
+      "Yer uning atrofida aylanadigan va hayot uchun zarur bo'lgan yorug'lik va issiqlikni ta'minlab beruvchi yulduz.",
+    suv: "Dengizlar, ko'llar, daryolar va yomg'irlarni hosil qiluvchi rangsiz, shaffof, hidsiz suyuqlik.",
+    mashina:
+      "Dvigatel bilan harakatlanadigan va oz sonli yo'lovchilarni tashish uchun mo'ljallangan yo'l transport vositasi.",
+    stol: "Bir yoki bir nechta oyoqlari bor yassi ustki qismli, ovqatlanish, yozish yoki ishlash yuzasi sifatida xizmat qiluvchi mebel.",
+    eshik:
+      "Bino, xona yoki transport vositasiga kirish joyidagi sharnirli, sirg'aluvchan yoki aylanuvchi to'siq.",
+    deraza:
+      "Bino yoki transport vositasining devor yoki tomidagi, yorug'lik yoki havo kirishi uchun romga o'rnatilgan shisha bilan jihozlangan ochilish joyi.",
+    ruchka:
+      "Siyoh bilan yozish yoki chizish uchun mo'ljallangan, odatda metall uchi yoki shariki bo'lgan asbob.",
+    stul: "Bir kishi uchun mo'ljallangan, odatda orqa suyanchig'i va to'rtta oyog'i bo'lgan alohida o'rindiq.",
+    ovqat:
+      "Odamlar yoki hayvonlar hayot va o'sishni saqlab qolish uchun iste'mol qiladigan har qanday to'yimli modda.",
+    "do'st": "Inson biladigan va o'zaro mehr-muhabbat aloqasi bo'lgan shaxs.",
+    maktab:
+      "Bolalar yoki kollej yoshidan kichik bo'lgan odamlarni o'qitish instituti.",
+    "o'qituvchi": "O'qituvchi, ayniqsa maktabda dars beruvchi shaxs.",
+    "o'quvchi": "Maktab, kollej yoki universitetda ta'lim olayotgan shaxs.",
+    ish: "Biror maqsad yoki natijaga erishish uchun bajarilgan aqliy yoki jismoniy faoliyat.",
+  };
+
   if (language === "english") {
-    return `The definition of "${word.english}" in English. This is a sample definition.`;
+    return (
+      englishDefinitions[word.english] ||
+      `A word referring to ${word.english}, commonly translated as "${word.uzbek}" in Uzbek.`
+    );
   } else {
-    return `"${word.uzbek}" so'zining o'zbek tilidagi ma'nosi. Bu namuna ta'rif.`;
+    return (
+      uzbekDefinitions[word.uzbek] ||
+      `"${word.uzbek}" so'zi, ingliz tilida "${word.english}" deb tarjima qilinadi.`
+    );
   }
 }
 
 function getWordExamples(word: Word): { english: string; uzbek: string }[] {
-  // Bu yerda haqiqiy namunalar bo'lmasa ham, ishlaydigan fake namunalar qaytaramiz
+  // Eng ko'p ishlatilgan so'zlar uchun real misollar
+  const examples: { [key: string]: { english: string; uzbek: string }[] } = {
+    apple: [
+      {
+        english: "I eat an apple every morning for breakfast.",
+        uzbek: "Men har kuni ertalab nonushtaga olma yeyman.",
+      },
+      {
+        english: "The apple trees in our garden produce delicious fruit.",
+        uzbek: "Bog'imizdagi olma daraxtlari mazali meva beradi.",
+      },
+    ],
+    book: [
+      {
+        english: "I'm reading an interesting book about history.",
+        uzbek: "Men tarix haqida qiziqarli kitob o'qiyapman.",
+      },
+      {
+        english: "He writes books for children.",
+        uzbek: "U bolalar uchun kitoblar yozadi.",
+      },
+    ],
+    cat: [
+      {
+        english: "My cat likes to sleep on the windowsill.",
+        uzbek: "Mushugim deraza tokchasida uxlashni yaxshi ko'radi.",
+      },
+      {
+        english: "The cat caught a mouse in the garden.",
+        uzbek: "Mushuk bog'da sichqon tutdi.",
+      },
+    ],
+    dog: [
+      {
+        english: "We take our dog for a walk every evening.",
+        uzbek: "Biz itimizni har kuni kechqurun sayrga olib chiqamiz.",
+      },
+      {
+        english: "The dog barked at the stranger.",
+        uzbek: "It notanish odamga qarab hurdi.",
+      },
+    ],
+    house: [
+      {
+        english: "They built a new house last year.",
+        uzbek: "Ular o'tgan yili yangi uy qurdilar.",
+      },
+      {
+        english: "Our house has three bedrooms and two bathrooms.",
+        uzbek: "Bizning uyimizda uchta yotoqxona va ikkita hammom bor.",
+      },
+    ],
+    water: [
+      {
+        english: "You should drink eight glasses of water every day.",
+        uzbek: "Siz har kuni sakkiz stakan suv ichishingiz kerak.",
+      },
+      {
+        english: "The water in this lake is very clear.",
+        uzbek: "Bu ko'ldagi suv juda toza.",
+      },
+    ],
+  };
+
+  // So'z uchun alohida misollar bo'lsa, ularni qaytaramiz
+  if (examples[word.english]) {
+    return examples[word.english];
+  }
+
+  // Aks holda, standart misollarni qaytaramiz
   return [
     {
-      english: `This is an example sentence using the word "${word.english}".`,
-      uzbek: `Bu "${word.uzbek}" so'zidan foydalangan namuna jumla.`,
+      english: `I can see the ${word.english} over there.`,
+      uzbek: `Men anavi yerdagi ${word.uzbek}ni ko'ra olaman.`,
     },
     {
-      english: `Another example with "${word.english}" in context.`,
-      uzbek: `"${word.uzbek}" so'zi bilan bog'liq yana bir misol.`,
+      english: `She likes the ${word.english} very much.`,
+      uzbek: `U ${word.uzbek}ni juda yaxshi ko'radi.`,
     },
   ];
 }
+
+export const getAllWordsSorted = (
+  lang: "english" | "uzbek" = "english"
+): Word[] => {
+  // Barcha so'zlarni ko'chirish va har biriga haqiqiy definitionlar va misollar qo'shish
+  const allWords = words.map((word) => ({
+    ...word,
+    englishDefinition: getWordDefinition(word, "english"),
+    uzbekDefinition: getWordDefinition(word, "uzbek"),
+    examples: getWordExamples(word),
+  }));
+
+  // Alifbo bo'yicha saralash
+  return allWords.sort((a, b) => {
+    if (lang === "english") {
+      return a.english.localeCompare(b.english);
+    } else {
+      return a.uzbek.localeCompare(b.uzbek);
+    }
+  });
+};
